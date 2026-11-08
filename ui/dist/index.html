@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Litube Spike</title>
+  <title>Litube Video Player</title>
   <style>
     html, body {
       margin: 0;
@@ -13,29 +13,30 @@
       overflow: hidden;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       user-select: none;
+      color: #f4f4f5;
     }
     .chrome {
       display: flex;
       flex-direction: column;
       height: 100%;
       background: transparent;
-      color: #e5e5e5;
     }
     .header {
-      height: 48px;
+      height: 44px;
       display: flex;
       align-items: center;
       padding: 0 16px;
       background: #18181b;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      border-bottom: 1px solid #27272a;
       font-weight: 600;
-      font-size: 14px;
+      font-size: 13px;
+      gap: 12px;
     }
     .content {
       flex: 1;
       display: flex;
-      padding: 16px;
-      gap: 16px;
+      padding: 12px;
+      gap: 12px;
       box-sizing: border-box;
       background: transparent;
     }
@@ -43,75 +44,178 @@
       flex: 3;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 8px;
       background: transparent;
     }
     /* The transparent viewport where native HWND shows through */
     #video-hole {
       flex: 1;
       background: transparent;
-      border-radius: 8px;
-      border: 1px dashed rgba(255, 255, 255, 0.2);
+      border-radius: 6px;
+      border: 1px dashed rgba(255, 255, 255, 0.15);
       box-sizing: border-box;
       pointer-events: none;
     }
     .sidebar {
       flex: 1;
       background: #18181b;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 8px;
-      padding: 12px;
+      border: 1px solid #27272a;
+      border-radius: 6px;
+      padding: 14px;
       font-size: 13px;
     }
-    .controls {
-      display: flex;
-      gap: 8px;
+    .controls-panel {
       background: #18181b;
-      padding: 8px;
+      border: 1px solid #27272a;
       border-radius: 6px;
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .seek-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+      color: #a1a1aa;
+    }
+    .seek-bar {
+      flex: 1;
+      -webkit-appearance: none;
+      height: 5px;
+      border-radius: 3px;
+      background: #3f3f46;
+      outline: none;
+      cursor: pointer;
+    }
+    .seek-bar::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: #3b82f6;
+      cursor: pointer;
+    }
+    .buttons-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
     }
     button {
-      background: #2563eb;
-      color: white;
-      border: none;
+      background: #27272a;
+      color: #f4f4f5;
+      border: 1px solid #3f3f46;
       padding: 6px 12px;
       border-radius: 4px;
       cursor: pointer;
       font-size: 12px;
+      font-weight: 500;
+      transition: background 0.1s;
     }
     button:hover {
-      background: #1d4ed8;
+      background: #3f3f46;
+    }
+    button.primary {
+      background: #dc2626;
+      border-color: #ef4444;
+    }
+    button.primary:hover {
+      background: #b91c1c;
+    }
+    select, input[type="text"] {
+      background: #27272a;
+      color: #f4f4f5;
+      border: 1px solid #3f3f46;
+      padding: 5px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      outline: none;
     }
   </style>
 </head>
 <body>
   <div class="chrome">
     <div class="header">
-      <span>Litube — Native Child Window Spike</span>
+      <span style="color:#ef4444; font-weight:700;">▶ Litube</span>
+      <span style="color:#71717a; font-size:12px;">Lightweight YouTube Desktop Client</span>
+      <span id="stats" style="margin-left:auto; font-size:12px; color:#10b981;">Ready</span>
     </div>
     <div class="content">
       <div class="player-container">
         <div id="video-hole"></div>
-        <div class="controls">
-          <input type="text" id="yt-input" value="aqz-KE-bpKQ" style="background:#222; border:1px solid #444; color:#fff; padding:6px 10px; border-radius:4px; font-size:12px; width:160px;" placeholder="YouTube Video ID" />
-          <button id="btn-yt-play" style="background:#dc2626;">Play YouTube Video</button>
-          <button id="btn-play">Play / Pause</button>
-          <button id="btn-seek">Seek +10s</button>
-          <span id="stats" style="margin-left: auto; font-size: 12px; color: #888;">Hole Sync Active</span>
+
+        <div class="controls-panel">
+          <!-- Seek Bar & Timing -->
+          <div class="seek-row">
+            <span id="time-current">0:00</span>
+            <input type="range" id="seek-bar" class="seek-bar" min="0" max="100" value="0" />
+            <span id="time-duration">0:00</span>
+          </div>
+
+          <!-- Buttons & Resolution Switcher -->
+          <div class="buttons-row">
+            <input type="text" id="yt-input" value="aqz-KE-bpKQ" style="width:140px;" placeholder="Video ID or URL" />
+
+            <!-- Resolution Selector -->
+            <select id="res-select" title="Resolution">
+              <option value="1080" selected>1080p</option>
+              <option value="720">720p</option>
+              <option value="480">480p</option>
+              <option value="360">360p</option>
+            </select>
+
+            <button id="btn-yt-play" class="primary">Load & Play</button>
+            <button id="btn-play">Pause</button>
+            <button id="btn-stop">Stop</button>
+            <button id="btn-seek-back">-10s</button>
+            <button id="btn-seek-fwd">+10s</button>
+
+            <!-- Speed Control -->
+            <select id="speed-select" title="Playback Speed">
+              <option value="0.5">0.5x</option>
+              <option value="1.0" selected>1.0x</option>
+              <option value="1.25">1.25x</option>
+              <option value="1.5">1.5x</option>
+              <option value="2.0">2.0x</option>
+            </select>
+
+            <!-- Fullscreen -->
+            <button id="btn-fullscreen" style="margin-left:auto;">⛶ Fullscreen</button>
+          </div>
         </div>
       </div>
+
       <div class="sidebar">
-        <h4>Spike Verification</h4>
-        <p>1. WebView2 transparent background: <b>Verified</b></p>
-        <p>2. Win32 Child HWND positioned below #video-hole: <b>Active</b></p>
-        <p>3. libmpv render target: <b>HWND direct</b></p>
+        <h4 style="margin-top:0;">Player Specs</h4>
+        <p>• <b>Engine:</b> libmpv2 (Native HWND)</p>
+        <p>• <b>Clock:</b> Unified Audio/Video Clock</p>
+        <p>• <b>Demuxer:</b> Bounded 32 MiB Buffer</p>
+        <p>• <b>D3D11:</b> Hardware Swapchain Direct</p>
+        <hr style="border:0; border-top:1px solid #27272a; margin:16px 0;" />
+        <h4 style="margin-top:0;">Shortcuts</h4>
+        <p><kbd>Space</kbd> Play / Pause</p>
+        <p><kbd>F</kbd> Toggle Fullscreen</p>
+        <p><kbd>← / →</kbd> Seek 5 seconds</p>
       </div>
     </div>
   </div>
 
   <script>
     const hole = document.getElementById('video-hole');
+    const seekBar = document.getElementById('seek-bar');
+    const timeCurrent = document.getElementById('time-current');
+    const timeDuration = document.getElementById('time-duration');
+    const stats = document.getElementById('stats');
+    let isUserSeeking = false;
+
+    function formatTime(seconds) {
+      if (!seconds || isNaN(seconds)) return '0:00';
+      const m = Math.floor(seconds / 60);
+      const s = Math.floor(seconds % 60);
+      return m + ':' + (s < 10 ? '0' : '') + s;
+    }
 
     function syncHoleRect() {
       if (!hole) return;
@@ -133,38 +237,106 @@
     window.addEventListener('resize', syncHoleRect);
     window.addEventListener('DOMContentLoaded', () => {
       setTimeout(syncHoleRect, 100);
+      setInterval(updateProgress, 500); // 2 Hz progress update
     });
 
+    async function updateProgress() {
+      if (isUserSeeking || !window.__TAURI__ || !window.__TAURI__.core) return;
+      try {
+        const state = await window.__TAURI__.core.invoke('player_get_state');
+        if (state.duration > 0) {
+          timeCurrent.innerText = formatTime(state.position);
+          timeDuration.innerText = formatTime(state.duration);
+          seekBar.max = Math.floor(state.duration);
+          seekBar.value = Math.floor(state.position);
+        }
+      } catch (e) {}
+    }
+
+    // Play YouTube ID with chosen resolution
     document.getElementById('btn-yt-play').addEventListener('click', async () => {
-      const id = document.getElementById('yt-input').value.trim();
-      const stats = document.getElementById('stats');
+      let id = document.getElementById('yt-input').value.trim();
+      const res = document.getElementById('res-select').value;
       if (!id) return;
-      stats.innerText = 'Extracting streams...';
+      
+      // If user pasted a full URL, extract video id
+      if (id.includes('v=')) {
+        id = id.split('v=')[1].split('&')[0];
+      }
+
+      stats.innerText = 'Extracting streams (' + res + 'p)...';
       stats.style.color = '#f59e0b';
       try {
-        if (window.__TAURI__ && window.__TAURI__.core) {
-          await window.__TAURI__.core.invoke('play_youtube_id', { videoId: id });
-          stats.innerText = 'Streaming via libmpv';
-          stats.style.color = '#10b981';
-        }
+        await window.__TAURI__.core.invoke('play_youtube_id', { videoId: id, resolution: res });
+        stats.innerText = 'Playing (' + res + 'p)';
+        stats.style.color = '#10b981';
+        document.getElementById('btn-play').innerText = 'Pause';
       } catch (err) {
         stats.innerText = 'Error: ' + err;
         stats.style.color = '#ef4444';
       }
     });
 
-    document.getElementById('btn-play').addEventListener('click', () => {
+    // Play / Pause
+    document.getElementById('btn-play').addEventListener('click', async () => {
       if (window.__TAURI__ && window.__TAURI__.core) {
-        window.__TAURI__.core.invoke('player_toggle_pause');
+        const isPaused = await window.__TAURI__.core.invoke('player_toggle_pause');
+        document.getElementById('btn-play').innerText = isPaused ? 'Resume' : 'Pause';
       }
     });
 
-    document.getElementById('btn-seek').addEventListener('click', () => {
+    // Stop
+    document.getElementById('btn-stop').addEventListener('click', async () => {
       if (window.__TAURI__ && window.__TAURI__.core) {
-        window.__TAURI__.core.invoke('player_seek', { seconds: 10.0 });
+        await window.__TAURI__.core.invoke('player_stop');
+        stats.innerText = 'Stopped';
+        document.getElementById('btn-play').innerText = 'Play';
+      }
+    });
+
+    // Seek buttons
+    document.getElementById('btn-seek-back').addEventListener('click', () => {
+      window.__TAURI__.core.invoke('player_seek', { seconds: -10.0 });
+    });
+    document.getElementById('btn-seek-fwd').addEventListener('click', () => {
+      window.__TAURI__.core.invoke('player_seek', { seconds: 10.0 });
+    });
+
+    // Seek bar interactions
+    seekBar.addEventListener('mousedown', () => { isUserSeeking = true; });
+    seekBar.addEventListener('input', () => {
+      timeCurrent.innerText = formatTime(seekBar.value);
+    });
+    seekBar.addEventListener('change', () => {
+      isUserSeeking = false;
+      window.__TAURI__.core.invoke('player_seek_to', { seconds: parseFloat(seekBar.value) });
+    });
+
+    // Speed selector
+    document.getElementById('speed-select').addEventListener('change', (e) => {
+      window.__TAURI__.core.invoke('player_set_speed', { speed: parseFloat(e.target.value) });
+    });
+
+    // Fullscreen toggle
+    document.getElementById('btn-fullscreen').addEventListener('click', async () => {
+      await window.__TAURI__.core.invoke('player_toggle_fullscreen');
+      setTimeout(syncHoleRect, 150);
+    });
+
+    // Keyboard shortcuts
+    window.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT') return;
+      if (e.code === 'Space') {
+        e.preventDefault();
+        document.getElementById('btn-play').click();
+      } else if (e.code === 'KeyF') {
+        document.getElementById('btn-fullscreen').click();
+      } else if (e.code === 'ArrowLeft') {
+        window.__TAURI__.core.invoke('player_seek', { seconds: -5.0 });
+      } else if (e.code === 'ArrowRight') {
+        window.__TAURI__.core.invoke('player_seek', { seconds: 5.0 });
       }
     });
   </script>
 </body>
 </html>
-

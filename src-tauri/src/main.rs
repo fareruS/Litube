@@ -109,9 +109,60 @@ fn player_seek(seconds: f64, state: State<AppState>) -> Result<(), String> {
     }
 }
 
+#[derive(serde::Serialize)]
+struct PlaybackState {
+    position: f64,
+    duration: f64,
+}
+
 #[tauri::command]
-async fn play_youtube_id(video_id: String, state: State<'_, AppState>) -> Result<(), String> {
-    // Locate sidecar extractor relative to current exe directory or workspace root
+fn player_get_state(state: State<AppState>) -> PlaybackState {
+    if let Some(player) = state.player.lock().unwrap().as_ref() {
+        PlaybackState {
+            position: player.get_position(),
+            duration: player.get_duration(),
+        }
+    } else {
+        PlaybackState { position: 0.0, duration: 0.0 }
+    }
+}
+
+#[tauri::command]
+fn player_stop(state: State<AppState>) -> Result<(), String> {
+    if let Some(player) = state.player.lock().unwrap().as_ref() {
+        player.stop().map_err(|e| e.to_string())
+    } else {
+        Err("Player not initialized".into())
+    }
+}
+
+#[tauri::command]
+fn player_seek_to(seconds: f64, state: State<AppState>) -> Result<(), String> {
+    if let Some(player) = state.player.lock().unwrap().as_ref() {
+        player.seek_absolute(seconds).map_err(|e| e.to_string())
+    } else {
+        Err("Player not initialized".into())
+    }
+}
+
+#[tauri::command]
+fn player_set_speed(speed: f64, state: State<AppState>) -> Result<(), String> {
+    if let Some(player) = state.player.lock().unwrap().as_ref() {
+        player.set_speed(speed).map_err(|e| e.to_string())
+    } else {
+        Err("Player not initialized".into())
+    }
+}
+
+#[tauri::command]
+fn player_toggle_fullscreen(window: tauri::WebviewWindow) -> Result<bool, String> {
+    let is_fullscreen = window.is_fullscreen().map_err(|e| e.to_string())?;
+    window.set_fullscreen(!is_fullscreen).map_err(|e| e.to_string())?;
+    Ok(!is_fullscreen)
+}
+
+#[tauri::command]
+async fn play_youtube_id(video_id: String, resolution: Option<String>, state: State<'_, AppState>) -> Result<(), String> {
     let sidecar_path = if let Ok(exe_path) = std::env::current_exe() {
         let exe_dir = exe_path.parent().unwrap();
         let candidate = exe_dir.join("yt-dlp.exe");
@@ -129,13 +180,16 @@ async fn play_youtube_id(video_id: String, state: State<'_, AppState>) -> Result
         std::path::PathBuf::from("vendor/yt-dlp.exe")
     };
 
+    let height = resolution.unwrap_or_else(|| "1080".into());
+    let format_filter = format!("bestvideo[height<={height}]+bestaudio/best[height<={height}]/best");
+
     let url = format!("https://www.youtube.com/watch?v={video_id}");
     let output = std::process::Command::new(&sidecar_path)
         .args([
             "--js-runtimes",
             "node",
             "-f",
-            "bestvideo[height<=1080]+bestaudio/best[height<=1080]/best",
+            &format_filter,
             "-g",
             &url,
         ])
@@ -176,7 +230,12 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             sync_video_rect,
             player_toggle_pause,
+            player_stop,
             player_seek,
+            player_seek_to,
+            player_get_state,
+            player_set_speed,
+            player_toggle_fullscreen,
             play_youtube_id
         ])
         .setup(|app| {

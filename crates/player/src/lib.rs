@@ -85,11 +85,50 @@ impl VideoPlayer {
         Ok(next)
     }
 
+    pub fn stop(&self) -> Result<(), PlayerError> {
+        let mpv = self.mpv.lock().unwrap();
+        mpv.command("stop", &[])
+            .map_err(|e| PlayerError::Command(format!("stop failed: {e}")))?;
+        Ok(())
+    }
+
     pub fn seek(&self, seconds: f64) -> Result<(), PlayerError> {
         let mpv = self.mpv.lock().unwrap();
         let sec_str = seconds.to_string();
         mpv.command("seek", &[&sec_str, "relative"])
             .map_err(|e| PlayerError::Command(format!("seek failed: {e}")))?;
+        Ok(())
+    }
+
+    pub fn seek_absolute(&self, seconds: f64) -> Result<(), PlayerError> {
+        let mpv = self.mpv.lock().unwrap();
+        let sec_str = seconds.to_string();
+        mpv.command("seek", &[&sec_str, "absolute"])
+            .map_err(|e| PlayerError::Command(format!("seek absolute failed: {e}")))?;
+        Ok(())
+    }
+
+    pub fn get_position(&self) -> f64 {
+        let mpv = self.mpv.lock().unwrap();
+        mpv.get_property("time-pos").unwrap_or(0.0)
+    }
+
+    pub fn get_duration(&self) -> f64 {
+        let mpv = self.mpv.lock().unwrap();
+        mpv.get_property("duration").unwrap_or(0.0)
+    }
+
+    pub fn set_speed(&self, speed: f64) -> Result<(), PlayerError> {
+        let mpv = self.mpv.lock().unwrap();
+        mpv.set_property("speed", speed)
+            .map_err(|e| PlayerError::SetProperty(format!("speed failed: {e}")))?;
+        Ok(())
+    }
+
+    pub fn set_volume(&self, vol: f64) -> Result<(), PlayerError> {
+        let mpv = self.mpv.lock().unwrap();
+        mpv.set_property("volume", vol)
+            .map_err(|e| PlayerError::SetProperty(format!("volume failed: {e}")))?;
         Ok(())
     }
 }
