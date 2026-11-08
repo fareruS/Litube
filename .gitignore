@@ -1,0 +1,12 @@
+/target
+/ui/node_modules
+/ui/build
+/ui/.svelte-kit
+*.log
+*.exe
+*.dll
+!crates/**/lib/
+!crates/**/include/
+.DS_Store
+Thumbs.db
+
