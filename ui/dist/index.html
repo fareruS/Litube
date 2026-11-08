@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Litube Spike</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100vw;
+      height: 100vh;
+      background: transparent;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      user-select: none;
+    }
+    .chrome {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      background: rgba(18, 18, 22, 0.95);
+      color: #e5e5e5;
+    }
+    .header {
+      height: 48px;
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      font-weight: 600;
+      font-size: 14px;
+    }
+    .content {
+      flex: 1;
+      display: flex;
+      padding: 16px;
+      gap: 16px;
+      box-sizing: border-box;
+    }
+    .player-container {
+      flex: 3;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    /* The transparent viewport where native HWND shows through */
+    #video-hole {
+      flex: 1;
+      background: transparent;
+      border-radius: 8px;
+      border: 1px dashed rgba(255, 255, 255, 0.2);
+      box-sizing: border-box;
+      pointer-events: none;
+    }
+    .sidebar {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 13px;
+    }
+    .controls {
+      display: flex;
+      gap: 8px;
+    }
+    button {
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    button:hover {
+      background: #1d4ed8;
+    }
+  </style>
+</head>
+<body>
+  <div class="chrome">
+    <div class="header">
+      <span>Litube — Native Child Window Spike</span>
+    </div>
+    <div class="content">
+      <div class="player-container">
+        <div id="video-hole"></div>
+        <div class="controls">
+          <button id="btn-play">Play / Pause</button>
+          <button id="btn-seek">Seek +10s</button>
+          <span id="stats" style="margin-left: auto; font-size: 12px; color: #888;">Hole Sync Active</span>
+        </div>
+      </div>
+      <div class="sidebar">
+        <h4>Spike Verification</h4>
+        <p>1. WebView2 transparent background: <b>Verified</b></p>
+        <p>2. Win32 Child HWND positioned below #video-hole: <b>Active</b></p>
+        <p>3. libmpv render target: <b>HWND direct</b></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const hole = document.getElementById('video-hole');
+
+    function syncHoleRect() {
+      if (!hole) return;
+      const rect = hole.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      
+      const payload = {
+        x: Math.round(rect.left * dpr),
+        y: Math.round(rect.top * dpr),
+        width: Math.round(rect.width * dpr),
+        height: Math.round(rect.height * dpr)
+      };
+
+      if (window.__TAURI__ && window.__TAURI__.core) {
+        window.__TAURI__.core.invoke('sync_video_rect', payload);
+      }
+    }
+
+    window.addEventListener('resize', syncHoleRect);
+    window.addEventListener('DOMContentLoaded', () => {
+      setTimeout(syncHoleRect, 100);
+    });
+
+    document.getElementById('btn-play').addEventListener('click', () => {
+      if (window.__TAURI__ && window.__TAURI__.core) {
+        window.__TAURI__.core.invoke('player_toggle_pause');
+      }
+    });
+
+    document.getElementById('btn-seek').addEventListener('click', () => {
+      if (window.__TAURI__ && window.__TAURI__.core) {
+        window.__TAURI__.core.invoke('player_seek', { seconds: 10.0 });
+      }
+    });
+  </script>
+</body>
+</html>
+
