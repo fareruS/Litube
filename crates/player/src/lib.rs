@@ -46,15 +46,15 @@ impl VideoPlayer {
         Ok(())
     }
 
-    /// Load separate video stream and attach external audio stream (DASH playback)
+    /// Load video and attach audio via mpv's external-file mechanism
     pub fn load_video_and_audio(&self, video_url: &str, audio_url: &str) -> Result<(), PlayerError> {
         let mpv = self.mpv.lock().unwrap();
-        // Load video stream
-        mpv.command("loadfile", &[video_url])
-            .map_err(|e| PlayerError::Command(format!("loadfile video failed: {e}")))?;
-        // Attach audio stream to the same master clock
-        mpv.command("audio-add", &[audio_url, "auto"])
-            .map_err(|e| PlayerError::Command(format!("audio-add failed: {e}")))?;
+        
+        // Pass external audio track directly as an option upon loading the file
+        // This avoids calling audio-add while the demuxer is still opening
+        let audio_opt = format!("audio-file={audio_url}");
+        mpv.command("loadfile", &[video_url, "replace", &audio_opt])
+            .map_err(|e| PlayerError::Command(format!("loadfile with audio failed: {e}")))?;
         Ok(())
     }
 
