@@ -46,15 +46,17 @@ impl VideoPlayer {
         Ok(())
     }
 
-    /// Load video and attach audio via mpv's external-file mechanism
+    /// Load video and attach audio cleanly without invalid option syntax
     pub fn load_video_and_audio(&self, video_url: &str, audio_url: &str) -> Result<(), PlayerError> {
         let mpv = self.mpv.lock().unwrap();
-        
-        // Pass external audio track directly as an option upon loading the file
-        // This avoids calling audio-add while the demuxer is still opening
-        let audio_opt = format!("audio-file={audio_url}");
-        mpv.command("loadfile", &[video_url, "replace", &audio_opt])
-            .map_err(|e| PlayerError::Command(format!("loadfile with audio failed: {e}")))?;
+
+        // 1. Set audio-file property for the next loaded file
+        let _ = mpv.set_property("audio-file", audio_url);
+
+        // 2. Load the main video stream
+        mpv.command("loadfile", &[video_url])
+            .map_err(|e| PlayerError::Command(format!("loadfile video failed: {e}")))?;
+
         Ok(())
     }
 
