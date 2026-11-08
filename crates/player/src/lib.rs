@@ -38,6 +38,16 @@ impl VideoPlayer {
         mpv.set_property("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
             .map_err(|e| PlayerError::SetProperty(format!("Failed to set user-agent: {e}")))?;
 
+        // 3. Strict disk and RAM bounds: prevent unbounded streaming buffers in memory
+        mpv.set_property("cache", "yes")
+            .map_err(|e| PlayerError::SetProperty(format!("Failed to set cache: {e}")))?;
+        mpv.set_property("demuxer-max-bytes", 32 * 1024 * 1024 as i64) // 32 MiB max RAM buffer
+            .map_err(|e| PlayerError::SetProperty(format!("Failed to set demuxer-max-bytes: {e}")))?;
+        mpv.set_property("demuxer-max-back-bytes", 16 * 1024 * 1024 as i64) // 16 MiB backward buffer
+            .map_err(|e| PlayerError::SetProperty(format!("Failed to set demuxer-max-back-bytes: {e}")))?;
+        mpv.set_property("cache-pause-wait", 0.3)
+            .map_err(|e| PlayerError::SetProperty(format!("Failed to set cache-pause-wait: {e}")))?;
+
         Ok(Self {
             mpv: Arc::new(Mutex::new(mpv)),
         })

@@ -131,7 +131,14 @@ async fn play_youtube_id(video_id: String, state: State<'_, AppState>) -> Result
 
     let url = format!("https://www.youtube.com/watch?v={video_id}");
     let output = std::process::Command::new(&sidecar_path)
-        .args(["--js-runtimes", "node", "-g", &url])
+        .args([
+            "--js-runtimes",
+            "node",
+            "-f",
+            "bestvideo[height<=1080]+bestaudio/best[height<=1080]/best",
+            "-g",
+            &url,
+        ])
         .output()
         .map_err(|e| format!("Failed to execute extractor at {:?}: {e}", sidecar_path))?;
 
