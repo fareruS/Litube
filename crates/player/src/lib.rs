@@ -46,6 +46,18 @@ impl VideoPlayer {
         Ok(())
     }
 
+    /// Load separate video stream and attach external audio stream (DASH playback)
+    pub fn load_video_and_audio(&self, video_url: &str, audio_url: &str) -> Result<(), PlayerError> {
+        let mpv = self.mpv.lock().unwrap();
+        // Load video stream
+        mpv.command("loadfile", &[video_url])
+            .map_err(|e| PlayerError::Command(format!("loadfile video failed: {e}")))?;
+        // Attach audio stream to the same master clock
+        mpv.command("audio-add", &[audio_url, "auto"])
+            .map_err(|e| PlayerError::Command(format!("audio-add failed: {e}")))?;
+        Ok(())
+    }
+
     pub fn toggle_pause(&self) -> Result<bool, PlayerError> {
         let mpv = self.mpv.lock().unwrap();
         let paused: bool = mpv

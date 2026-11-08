@@ -97,6 +97,38 @@ fn player_seek(seconds: f64, state: State<AppState>) -> Result<(), String> {
     }
 }
 
+#[tauri::command]
+async fn play_youtube_id(video_id: String, state: State<'_, AppState>) -> Result<(), String> {
+    // Resolve YouTube direct DASH streams via sidecar extractor
+    let sidecar_path = std::path::Path::new("vendor/yt-dlp.exe");
+    if !sidecar_path.exists() {
+        return Err("Sidecar extractor not found in vendor/".into());
+    }
+
+    let url = format!("https://www.youtube.com/watch?v={video_id}");
+    let output = std::process::Command::new(sidecar_path)
+        .args(["--js-runtimes", "node", "-g", &url])
+        .output()
+        .map_err(|e| format!("Failed to execute extractor: {e}"))?;
+
+    if !output.status.success() {
+        let err = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("Extractor failed: {err}"));
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let mut lines = stdout.lines().filter(|l| l.starts_with("http"));
+    let video_url = lines.next().ok_or("No video URL extracted")?;
+    let audio_url = lines.next().unwrap_or(video_url);
+
+    if let Some(player) = state.player.lock().unwrap().as_ref() {
+        player.load_video_and_audio(video_url, audio_url).map_err(|e| e.to_string())?;
+        Ok(())
+    } else {
+        Err("Player not initialized".into())
+    }
+}
+
 fn main() {
     // Trim unused WebView2 browser subsystems to reduce idle memory footprint
     std::env::set_var(
@@ -113,7 +145,8 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             sync_video_rect,
             player_toggle_pause,
-            player_seek
+            player_seek,
+            play_youtube_id
         ])
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();
