@@ -27,12 +27,16 @@ impl VideoPlayer {
         // 2. Set strict options per Litube architectural specification
         mpv.set_property("vo", "gpu")
             .map_err(|e| PlayerError::SetProperty(format!("Failed to set vo: {e}")))?;
+        mpv.set_property("gpu-context", "d3d11")
+            .map_err(|e| PlayerError::SetProperty(format!("Failed to set gpu-context: {e}")))?;
         mpv.set_property("hwdec", "auto-safe")
             .map_err(|e| PlayerError::SetProperty(format!("Failed to set hwdec: {e}")))?;
         mpv.set_property("ytdl", "no")
             .map_err(|e| PlayerError::SetProperty(format!("Failed to set ytdl: {e}")))?;
         mpv.set_property("keep-open", "yes")
             .map_err(|e| PlayerError::SetProperty(format!("Failed to set keep-open: {e}")))?;
+        mpv.set_property("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
+            .map_err(|e| PlayerError::SetProperty(format!("Failed to set user-agent: {e}")))?;
 
         Ok(Self {
             mpv: Arc::new(Mutex::new(mpv)),

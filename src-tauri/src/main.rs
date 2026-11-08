@@ -13,7 +13,6 @@ mod win32_child {
     };
 
     pub unsafe fn create_child_hwnd(parent: HWND, x: i32, y: i32, w: i32, h: i32) -> HWND {
-        // "STATIC" is a standard built-in Win32 window class perfect for hosting custom renderers
         let class_name: Vec<u16> = "STATIC\0".encode_utf16().collect();
         let child = CreateWindowExW(
             0,
@@ -28,6 +27,19 @@ mod win32_child {
             std::ptr::null_mut(),
             std::ptr::null_mut(),
             std::ptr::null_mut(),
+        );
+
+        // Bring child window to top of parent's internal Z-order so it is not hidden under sibling controls
+        SetWindowPos(
+            child,
+            0 as HWND, // HWND_TOP
+            0,
+            0,
+            0,
+            0,
+            windows_sys::Win32::UI::WindowsAndMessaging::SWP_NOMOVE
+                | windows_sys::Win32::UI::WindowsAndMessaging::SWP_NOSIZE
+                | windows_sys::Win32::UI::WindowsAndMessaging::SWP_NOACTIVATE,
         );
 
         ShowWindow(child, SW_SHOW);
