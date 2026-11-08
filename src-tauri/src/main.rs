@@ -8,14 +8,15 @@ use player::VideoPlayer;
 mod win32_child {
     use windows_sys::Win32::Foundation::HWND;
     use windows_sys::Win32::UI::WindowsAndMessaging::{
-        CreateWindowExW, SetWindowPos, ShowWindow, SWP_NOACTIVATE, SWP_NOZORDER, SW_SHOW,
-        WS_CHILD, WS_CLIPSIBLINGS, WS_VISIBLE,
+        CreateWindowExW, SetWindowPos, ShowWindow, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE,
+        SWP_NOZORDER, SW_SHOW, WS_CHILD, WS_CLIPSIBLINGS, WS_VISIBLE, WS_EX_TRANSPARENT,
     };
 
     pub unsafe fn create_child_hwnd(parent: HWND, x: i32, y: i32, w: i32, h: i32) -> HWND {
         let class_name: Vec<u16> = "STATIC\0".encode_utf16().collect();
+        // WS_EX_TRANSPARENT ensures mouse and click events pass through to the WebView2 UI controls!
         let child = CreateWindowExW(
-            0,
+            WS_EX_TRANSPARENT as u32,
             class_name.as_ptr(),
             std::ptr::null(),
             WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS,
@@ -29,17 +30,15 @@ mod win32_child {
             std::ptr::null_mut(),
         );
 
-        // Bring child window to top of parent's internal Z-order so it is not hidden under sibling controls
+        // Put the child window at the BOTTOM of the sibling z-order so WebView2's controls always receive input
         SetWindowPos(
             child,
-            0 as HWND, // HWND_TOP
+            1 as HWND, // HWND_BOTTOM
             0,
             0,
             0,
             0,
-            windows_sys::Win32::UI::WindowsAndMessaging::SWP_NOMOVE
-                | windows_sys::Win32::UI::WindowsAndMessaging::SWP_NOSIZE
-                | windows_sys::Win32::UI::WindowsAndMessaging::SWP_NOACTIVATE,
+            SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE,
         );
 
         ShowWindow(child, SW_SHOW);
@@ -49,12 +48,12 @@ mod win32_child {
     pub unsafe fn resize_child_hwnd(child: HWND, x: i32, y: i32, w: i32, h: i32) {
         SetWindowPos(
             child,
-            std::ptr::null_mut(),
+            1 as HWND, // HWND_BOTTOM
             x,
             y,
             w,
             h,
-            SWP_NOZORDER | SWP_NOACTIVATE,
+            SWP_NOACTIVATE,
         );
     }
 }
@@ -79,6 +78,7 @@ fn sync_video_rect(rect: HoleRect, state: State<AppState>) {
     {
         if let Some(hwnd) = *state.child_hwnd.lock().unwrap() {
             unsafe {
+                // Ensure the child window remains at the bottom of the Z-order so UI controls stay clickable
                 win32_child::resize_child_hwnd(
                     hwnd as windows_sys::Win32::Foundation::HWND,
                     rect.x,
