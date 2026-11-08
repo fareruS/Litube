@@ -14,9 +14,9 @@ mod win32_child {
 
     pub unsafe fn create_child_hwnd(parent: HWND, x: i32, y: i32, w: i32, h: i32) -> HWND {
         let class_name: Vec<u16> = "STATIC\0".encode_utf16().collect();
-        // WS_EX_TRANSPARENT ensures mouse and click events pass through to the WebView2 UI controls!
+        // Remove WS_EX_TRANSPARENT: in D3D11 composition, transparent styles suppress swapchain presentation
         let child = CreateWindowExW(
-            WS_EX_TRANSPARENT as u32,
+            0,
             class_name.as_ptr(),
             std::ptr::null(),
             WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS,
@@ -30,17 +30,6 @@ mod win32_child {
             std::ptr::null_mut(),
         );
 
-        // Put the child window at the BOTTOM of the sibling z-order so WebView2's controls always receive input
-        SetWindowPos(
-            child,
-            1 as HWND, // HWND_BOTTOM
-            0,
-            0,
-            0,
-            0,
-            SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE,
-        );
-
         ShowWindow(child, SW_SHOW);
         child
     }
@@ -48,12 +37,12 @@ mod win32_child {
     pub unsafe fn resize_child_hwnd(child: HWND, x: i32, y: i32, w: i32, h: i32) {
         SetWindowPos(
             child,
-            1 as HWND, // HWND_BOTTOM
+            std::ptr::null_mut(),
             x,
             y,
             w,
             h,
-            SWP_NOACTIVATE,
+            SWP_NOZORDER | SWP_NOACTIVATE,
         );
     }
 }

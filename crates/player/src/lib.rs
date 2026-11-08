@@ -29,8 +29,6 @@ impl VideoPlayer {
             .map_err(|e| PlayerError::SetProperty(format!("Failed to set vo: {e}")))?;
         mpv.set_property("gpu-context", "d3d11")
             .map_err(|e| PlayerError::SetProperty(format!("Failed to set gpu-context: {e}")))?;
-        mpv.set_property("panscan", 1.0) // Fill the viewport completely without letterbox bars
-            .map_err(|e| PlayerError::SetProperty(format!("Failed to set panscan: {e}")))?;
         mpv.set_property("hwdec", "auto-safe")
             .map_err(|e| PlayerError::SetProperty(format!("Failed to set hwdec: {e}")))?;
         mpv.set_property("ytdl", "no")
