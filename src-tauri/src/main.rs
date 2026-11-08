@@ -99,17 +99,29 @@ fn player_seek(seconds: f64, state: State<AppState>) -> Result<(), String> {
 
 #[tauri::command]
 async fn play_youtube_id(video_id: String, state: State<'_, AppState>) -> Result<(), String> {
-    // Resolve YouTube direct DASH streams via sidecar extractor
-    let sidecar_path = std::path::Path::new("vendor/yt-dlp.exe");
-    if !sidecar_path.exists() {
-        return Err("Sidecar extractor not found in vendor/".into());
-    }
+    // Locate sidecar extractor relative to current exe directory or workspace root
+    let sidecar_path = if let Ok(exe_path) = std::env::current_exe() {
+        let exe_dir = exe_path.parent().unwrap();
+        let candidate = exe_dir.join("yt-dlp.exe");
+        if candidate.exists() {
+            candidate
+        } else {
+            let root_candidate = std::path::Path::new("vendor/yt-dlp.exe").to_path_buf();
+            if root_candidate.exists() {
+                root_candidate
+            } else {
+                std::path::PathBuf::from("yt-dlp.exe")
+            }
+        }
+    } else {
+        std::path::PathBuf::from("vendor/yt-dlp.exe")
+    };
 
     let url = format!("https://www.youtube.com/watch?v={video_id}");
-    let output = std::process::Command::new(sidecar_path)
+    let output = std::process::Command::new(&sidecar_path)
         .args(["--js-runtimes", "node", "-g", &url])
         .output()
-        .map_err(|e| format!("Failed to execute extractor: {e}"))?;
+        .map_err(|e| format!("Failed to execute extractor at {:?}: {e}", sidecar_path))?;
 
     if !output.status.success() {
         let err = String::from_utf8_lossy(&output.stderr);
