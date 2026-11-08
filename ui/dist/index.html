@@ -18,7 +18,7 @@
       display: flex;
       flex-direction: column;
       height: 100%;
-      background: rgba(18, 18, 22, 0.95);
+      background: transparent;
       color: #e5e5e5;
     }
     .header {
@@ -26,6 +26,7 @@
       display: flex;
       align-items: center;
       padding: 0 16px;
+      background: #18181b;
       border-bottom: 1px solid rgba(255, 255, 255, 0.1);
       font-weight: 600;
       font-size: 14px;
@@ -36,12 +37,14 @@
       padding: 16px;
       gap: 16px;
       box-sizing: border-box;
+      background: transparent;
     }
     .player-container {
       flex: 3;
       display: flex;
       flex-direction: column;
       gap: 12px;
+      background: transparent;
     }
     /* The transparent viewport where native HWND shows through */
     #video-hole {
@@ -54,7 +57,8 @@
     }
     .sidebar {
       flex: 1;
-      background: rgba(255, 255, 255, 0.03);
+      background: #18181b;
+      border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: 8px;
       padding: 12px;
       font-size: 13px;
@@ -62,6 +66,10 @@
     .controls {
       display: flex;
       gap: 8px;
+      background: #18181b;
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
     }
     button {
       background: #2563eb;
