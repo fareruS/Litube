@@ -14,3 +14,4 @@ Implement strict architecture boundaries across the workspace:
 - [ ] Task 1.3: Implement `store` database connection pool, user settings table, watch history table, and schema migrations.
 - [ ] Task 1.4: Implement IPC label security guard and command routing in `src-tauri`.
 - [ ] Task 1.5: Verify offline compilation and unit tests with `cargo test --workspace`.
+

@@ -24,3 +24,4 @@ Offline unit tests run via `cargo test`:
 - `yt-source`: 0 passed, 0 failed (trait + mock).
 
 Ready for Phase 2: Playback Core deep integration (speed control, chapters, subtitles, quality switching under 500ms).
+

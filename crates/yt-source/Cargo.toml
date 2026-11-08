@@ -1,6 +1,12 @@
 [package]
 name = "yt-source"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
 
 [dependencies]
+yt-model = { path = "../yt-model" }
+async-trait = "0.1"
+thiserror = "2.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.54", features = ["sync", "fs"] }
