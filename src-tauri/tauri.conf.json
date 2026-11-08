@@ -10,13 +10,16 @@
     "withGlobalTauri": true,
     "windows": [
       {
+        "label": "main",
         "title": "Litube",
         "width": 1100,
         "height": 700,
         "resizable": true,
         "fullscreen": false,
-        "transparent": true,
-        "decorations": true
+        "transparent": false,
+        "decorations": true,
+        "visible": true,
+        "focus": true
       }
     ],
     "security": {

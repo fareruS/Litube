@@ -98,6 +98,12 @@ fn player_seek(seconds: f64, state: State<AppState>) -> Result<(), String> {
 }
 
 fn main() {
+    // Trim unused WebView2 browser subsystems to reduce idle memory footprint
+    std::env::set_var(
+        "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS",
+        "--disable-features=Translate,AutofillServerCommunication,OptimizationHints --disable-extensions --disable-component-update --disable-background-networking"
+    );
+
     tauri::Builder::default()
         .manage(AppState {
             player: Mutex::new(None),
@@ -111,6 +117,8 @@ fn main() {
         ])
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();
+            let _ = window.show();
+            let _ = window.set_focus();
 
             #[cfg(windows)]
             {
@@ -130,10 +138,6 @@ fn main() {
                     // Initialize mpv on this child HWND
                     match VideoPlayer::new_with_hwnd(child as isize) {
                         Ok(player) => {
-                            // If a sample test video exists, auto-load it
-                            if std::path::Path::new("tests/fixtures/sample.mp4").exists() {
-                                let _ = player.load_file("tests/fixtures/sample.mp4");
-                            }
                             *state.player.lock().unwrap() = Some(player);
                             println!("[Litube Spike] libmpv successfully anchored to HWND: {:?}", child);
                         }
