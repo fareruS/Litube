@@ -1505,6 +1505,7 @@
     // Win32 HWND bounds sync
     function syncHole() {
       if (currentView !== 'watch' || !hole) return;
+      if (document.querySelector('.modal-overlay.active')) return;
       const rect = hole.getBoundingClientRect();
       const dpr = window.devicePixelRatio || 1;
       invoke('sync_video_rect', {
@@ -1513,6 +1514,25 @@
         width: Math.round(rect.width * dpr),
         height: Math.round(rect.height * dpr),
       });
+    }
+
+    // Modal Management (with native Win32 child HWND visibility handling)
+    function openModal(modal) {
+      if (!modal) return;
+      modal.classList.add('active');
+      if (currentView === 'watch') {
+        invoke('player_set_visible', { visible: false });
+      }
+    }
+
+    function closeModal(modal) {
+      if (!modal) return;
+      modal.classList.remove('active');
+      const anyOpen = document.querySelector('.modal-overlay.active');
+      if (!anyOpen && currentView === 'watch') {
+        invoke('player_set_visible', { visible: true });
+        setTimeout(syncHole, 50);
+      }
     }
 
     // Skeleton Cards Generator
@@ -1805,10 +1825,10 @@
     });
 
     btnOpenAccount.addEventListener('click', () => {
-      accountModal.classList.add('active');
+      openModal(accountModal);
     });
     btnCloseAccount.addEventListener('click', () => {
-      accountModal.classList.remove('active');
+      closeModal(accountModal);
     });
 
     async function refreshAuthStatus() {
@@ -1897,7 +1917,7 @@
       try {
         await invoke('auth_import_cookies', { content });
         await refreshAuthStatus();
-        accountModal.classList.remove('active');
+        closeModal(accountModal);
         statusLabel.innerText = 'Signed In';
       } catch (err) {
         alert('Failed to import cookies: ' + err);
@@ -1918,11 +1938,20 @@
 
     // Settings Modal
     btnOpenSettings.addEventListener('click', () => {
-      settingsModal.classList.add('active');
+      openModal(settingsModal);
     });
 
     btnCloseSettings.addEventListener('click', () => {
-      settingsModal.classList.remove('active');
+      closeModal(settingsModal);
+    });
+
+    // Dismiss modal on backdrop click
+    document.querySelectorAll('.modal-overlay').forEach(modal => {
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          closeModal(modal);
+        }
+      });
     });
 
     settingCloseTray.addEventListener('change', () => {
@@ -2100,7 +2129,13 @@
     window.addEventListener('mousemove', resetFullscreenTimer);
     window.addEventListener('keydown', (e) => {
       resetFullscreenTimer();
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+      const activeModal = document.querySelector('.modal-overlay.active');
+      if (e.code === 'Escape' && activeModal) {
+        e.preventDefault();
+        closeModal(activeModal);
+        return;
+      }
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
 
       if (e.code === 'Escape') {
         if (isFullscreenMode) {
