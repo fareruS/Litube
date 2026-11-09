@@ -661,6 +661,120 @@
       gap: 16px;
       box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6);
     }
+    .modal-card.account-card {
+      width: 480px;
+      max-width: 92vw;
+      max-height: 88vh;
+      overflow-y: auto;
+    }
+    .account-status-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      margin-bottom: 14px;
+    }
+    .account-user-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .account-avatar-placeholder {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #27272a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+    .account-meta-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+    .account-meta-desc {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .account-tutorial-box {
+      background: rgba(59, 130, 246, 0.05);
+      border: 1px solid rgba(59, 130, 246, 0.2);
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin-bottom: 12px;
+    }
+    .tutorial-header {
+      font-size: 12px;
+      font-weight: 600;
+      color: #60a5fa;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .tutorial-step {
+      display: flex;
+      gap: 8px;
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      line-height: 1.4;
+    }
+    .step-num {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: rgba(59, 130, 246, 0.2);
+      color: #93c5fd;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .drop-zone {
+      border: 1px dashed var(--border-subtle);
+      border-radius: 6px;
+      padding: 16px;
+      text-align: center;
+      background: #141416;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .drop-zone:hover, .drop-zone.dragover {
+      border-color: var(--accent-blue);
+      background: rgba(59, 130, 246, 0.04);
+    }
+    .drop-zone-text {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-main);
+      margin-bottom: 4px;
+    }
+    .drop-zone-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .btn-toggle-paste {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 11px;
+      cursor: pointer;
+      padding: 4px 0;
+      margin-top: 8px;
+      text-decoration: underline;
+    }
+    .btn-toggle-paste:hover {
+      color: var(--text-main);
+    }
     .modal-header {
       display: flex;
       align-items: center;
@@ -1148,61 +1262,82 @@
 
   <!-- Account & Sign In Modal Dialog -->
   <div id="account-modal" class="modal-overlay">
-    <div class="modal-card">
+    <div class="modal-card account-card">
       <div class="modal-header">
         <span>YouTube Account</span>
         <button id="btn-close-account" class="btn" style="height:26px; padding:0 8px;">Done</button>
       </div>
       <div class="modal-body">
-        <div class="setting-item">
-          <div class="setting-label-box">
-            <span class="setting-title">Sign-In Status</span>
-            <span id="account-status-desc" class="setting-desc">Not signed in (Public mode)</span>
+        <div class="account-status-card">
+          <div class="account-user-info">
+            <div class="account-avatar-placeholder">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            </div>
+            <div>
+              <div class="account-meta-title">Account Status</div>
+              <div id="account-status-desc" class="account-meta-desc">Not signed in (Public mode)</div>
+            </div>
           </div>
           <span id="account-badge" style="font-size:11px; padding:2px 8px; border-radius:4px; background:#27272a; color:#a1a1aa; font-weight:600;">Guest</span>
         </div>
 
         <div id="account-signin-section">
-          <div style="margin-bottom: 14px;">
+          <div>
             <button id="btn-open-google-login" class="btn primary" style="width:100%; display:flex; gap:8px; align-items:center; justify-content:center; height:36px;">
-              <span>🌐</span> Sign in with Google (In-App Window)
+              <span>Sign in with In-App Browser</span>
             </button>
             <div style="font-size:11px; color:var(--text-muted); margin-top:4px; text-align:center;">
-              Opens Google's official YouTube sign-in page
+              Opens official YouTube login window
             </div>
           </div>
 
-          <div style="display:flex; align-items:center; gap:8px; margin: 12px 0;">
+          <div style="display:flex; align-items:center; gap:8px; margin: 14px 0 12px 0;">
             <div style="flex:1; height:1px; background:var(--border-subtle);"></div>
-            <span style="font-size:11px; color:var(--text-muted); text-transform:uppercase;">or import cookies</span>
+            <span style="font-size:11px; color:var(--text-muted); text-transform:uppercase;">or cookie file import</span>
             <div style="flex:1; height:1px; background:var(--border-subtle);"></div>
           </div>
 
-          <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.5;">
-            Import YouTube session cookies to unlock age-restricted videos, private playlists, and channel subscriptions:
+          <div class="account-tutorial-box">
+            <div class="tutorial-header">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+              <span>Quick Setup Guide (30 Seconds)</span>
+            </div>
+            <div class="tutorial-step">
+              <div class="step-num">1</div>
+              <div>Install the <strong>"Get cookies.txt LOCALLY"</strong> extension in your browser (Chrome or Firefox).</div>
+            </div>
+            <div class="tutorial-step">
+              <div class="step-num">2</div>
+              <div>Open <strong>youtube.com</strong>, ensure you are logged in, click the extension icon and select <strong>"Export"</strong>.</div>
+            </div>
+            <div class="tutorial-step">
+              <div class="step-num">3</div>
+              <div>Drag & drop the downloaded <strong>cookies.txt</strong> file into the box below.</div>
+            </div>
           </div>
 
-          <div style="display:flex; flex-direction:column; gap:8px;">
-            <label class="btn" style="cursor:pointer; width: fit-content;">
-              Choose cookies.txt File
-              <input type="file" id="input-cookie-file" accept=".txt" style="display:none;" />
-            </label>
-            <span id="cookie-file-name" style="font-size:11px; color:var(--text-muted);">No file selected</span>
+          <div id="cookie-drop-zone" class="drop-zone">
+            <input type="file" id="input-cookie-file" accept=".txt" style="display:none;" />
+            <div class="drop-zone-text">Drop cookies.txt here or click to browse</div>
+            <div id="cookie-file-name" class="drop-zone-sub">Supports standard Netscape / yt-dlp cookie format</div>
           </div>
 
-          <div style="margin-top: 12px;">
-            <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">Or paste Netscape cookie text:</div>
-            <textarea id="cookie-paste-area" class="input-compact" style="width:100%; height:65px; resize:vertical; font-family:monospace; font-size:11px; padding:6px;" placeholder="# Netscape HTTP Cookie File..."></textarea>
+          <div style="text-align:center;">
+            <button id="btn-toggle-paste" class="btn-toggle-paste" type="button">Or paste cookies text manually</button>
           </div>
 
-          <button id="btn-save-cookies" class="btn" style="margin-top:10px; width:100%;">Save Cookies</button>
+          <div id="cookie-paste-container" style="display:none; margin-top:8px;">
+            <textarea id="cookie-paste-area" class="input-compact" style="width:100%; height:75px; resize:vertical; font-family:monospace; font-size:11px; padding:6px;" placeholder="# Netscape HTTP Cookie File..."></textarea>
+            <button id="btn-save-cookies" class="btn" style="margin-top:8px; width:100%;">Save Cookies</button>
+          </div>
         </div>
 
         <div id="account-signedin-section" style="display:none;">
-          <div style="font-size: 12px; color: #22c55e; margin-bottom: 12px;">
-            ✓ Active cookies loaded. Authenticated requests enabled.
+          <div style="display:flex; align-items:center; gap:8px; padding:12px; background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.25); border-radius:6px; margin-bottom:14px; font-size:12px; color:#4ade80;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            <span>Authenticated session active. Ready for age-restricted videos and feeds.</span>
           </div>
-          <button id="btn-sign-out" class="btn" style="width:100%; border-color:#ef4444; color:#ef4444;">Sign Out / Remove Cookies</button>
+          <button id="btn-sign-out" class="btn" style="width:100%; border-color:#ef4444; color:#ef4444; height:34px;">Sign Out / Remove Cookies</button>
         </div>
       </div>
     </div>
@@ -1282,8 +1417,11 @@
     const accountBadge = document.getElementById('account-badge');
     const accountSigninSection = document.getElementById('account-signin-section');
     const accountSignedinSection = document.getElementById('account-signedin-section');
+    const cookieDropZone = document.getElementById('cookie-drop-zone');
     const inputCookieFile = document.getElementById('input-cookie-file');
     const cookieFileName = document.getElementById('cookie-file-name');
+    const btnTogglePaste = document.getElementById('btn-toggle-paste');
+    const cookiePasteContainer = document.getElementById('cookie-paste-container');
     const cookiePasteArea = document.getElementById('cookie-paste-area');
     const btnSaveCookies = document.getElementById('btn-save-cookies');
     const btnSignOut = document.getElementById('btn-sign-out');
@@ -1698,16 +1836,57 @@
       } catch (e) {}
     }
 
+    // Manual paste toggle
+    btnTogglePaste.addEventListener('click', () => {
+      const isHidden = cookiePasteContainer.style.display === 'none';
+      cookiePasteContainer.style.display = isHidden ? 'block' : 'none';
+      btnTogglePaste.innerText = isHidden ? 'Hide manual paste area' : 'Or paste cookies text manually';
+    });
+
+    // Drop zone click triggers file picker
+    cookieDropZone.addEventListener('click', () => {
+      inputCookieFile.click();
+    });
+
+    // Drag-and-drop listeners
+    cookieDropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      cookieDropZone.classList.add('dragover');
+    });
+    cookieDropZone.addEventListener('dragleave', (e) => {
+      e.preventDefault();
+      cookieDropZone.classList.remove('dragover');
+    });
+    cookieDropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      cookieDropZone.classList.remove('dragover');
+      if (e.dataTransfer && e.dataTransfer.files.length > 0) {
+        handleCookieFile(e.dataTransfer.files[0]);
+      }
+    });
+
     inputCookieFile.addEventListener('change', (e) => {
       const file = e.target.files[0];
+      if (file) handleCookieFile(file);
+    });
+
+    function handleCookieFile(file) {
       if (!file) return;
       cookieFileName.innerText = file.name;
       const reader = new FileReader();
-      reader.onload = (evt) => {
-        cookiePasteArea.value = evt.target.result;
+      reader.onload = async (evt) => {
+        const content = evt.target.result;
+        cookiePasteArea.value = content;
+        try {
+          await invoke('auth_import_cookies', { content });
+          await refreshAuthStatus();
+          statusLabel.innerText = 'Signed In';
+        } catch (err) {
+          alert('Failed to import cookies: ' + err);
+        }
       };
       reader.readAsText(file);
-    });
+    }
 
     btnSaveCookies.addEventListener('click', async () => {
       const content = cookiePasteArea.value.trim();
