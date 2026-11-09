@@ -1,0 +1,23 @@
+# Litube Playback Engine Telemetry & Verification (Phase 2)
+
+## 1. Engine Configuration & Memory Bounds
+- **mpv Version:** `v0.42.0`
+- **Video Output:** `vo=gpu`, `hwdec=auto-safe` (Direct3D 11 hardware swapchain target HWND)
+- **Audio Output:** Native Windows Audio Session (`wasapi`, auto device routing)
+- **Buffer & Network Bounds:** 48 MiB RAM demuxer buffer (`demuxer-max-bytes=48MiB`, `demuxer-max-back-bytes=16MiB`), `demuxer-readahead-secs=60.0`, `cache-secs=120.0`, `cache-pause-wait=3.0s`, `cache-pause-initial=yes` (holds ~2 minutes of 1080p stream in RAM while minimizing memory footprint).
+- **Direct Hardware Surface Decoding:** `vd-lavc-dr=yes` (decodes directly to D3D11 swapchain surface, eliminating system RAM frame buffer copies), `vd-lavc-threads=2`, `scale=bilinear`, `cscale=bilinear`.
+- **WebView2 Subsystem Trimming:** `--renderer-process-limit=1`, `--js-flags=--max-old-space-size=64`, `--process-per-site`, disabling unused browser features.
+- **Network Resilience:** `stream-lavf-o=reconnect_streamed=1,reconnect=1,reconnect_delay_max=5` and `network-timeout=15` automatically recovers from network packet drops.
+- **Codec Preference:** Prioritizes H.264 (`avc1`) + AAC (`m4a`) and VP9 (`vp9`) over raw AV1 (`av01`), preventing truncated OBU fragment corruptions from YouTube direct streaming.
+- **Internal ytdl Disabled:** `ytdl=no` (Stream resolution handled strictly out-of-process via Rust `yt-dlp` sidecar)
+
+## 2. DASH Audio & Video Synchronization
+- YouTube streams high-resolution video and audio as separate DASH streams.
+- **Audio Binding:** External audio track bound via `audio-files` property before `loadfile`, auto-selecting the primary audio stream (`aid=auto`, decoding with native `aac`/`opus`).
+- **Seamless Offset on Quality Switch:** Quality changes pass the active timestamp to `start` (`start=<seconds>`) prior to `loadfile`, bypassing demuxer race conditions and initiating decoding at the exact frame.
+
+## 3. Automated Verification Tests (`cargo test -p player`)
+- `test_player_rapid_20_seeks_stability`: 20 consecutive seeks across 2.5s intervals; 0 crashes, 0 deadlocks, clean demuxer flush.
+- `test_player_initialization_and_audio_only_toggle`: Speed variation (0.5x to 2.0x), volume scaling, and `vid=no`/`vid=auto` GPU decode toggle verified.
+- `test_audio_and_start_properties`: Verification of runtime `audio-files` track list population and `start` timestamp offset formatting.
+

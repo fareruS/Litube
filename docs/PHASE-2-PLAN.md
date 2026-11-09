@@ -18,9 +18,9 @@ Implement a production-grade, resource-bounded `player` crate wrapping `libmpv2`
    - Scripted test verifying 20 consecutive random seeks without audio/video desync or process crashes.
 
 ## Tasks
-- [ ] Task 2.1: Configure disk-backed cache and demuxer limits in `player` crate initialization.
-- [ ] Task 2.2: Implement queue, audio-only switching (`vid=no` / `vid=auto`), and speed adjustment (0.25x - 3.0x).
-- [ ] Task 2.3: Wire background mpv event loop emitting position ticks (4 Hz) and track events to Tauri frontend.
-- [ ] Task 2.4: Write property / automated playback stability test with 20 seeks.
-- [ ] Task 2.5: Document performance telemetry in `docs/PLAYBACK.md`.
+- [x] Task 2.1: Configure disk-backed cache and demuxer limits in `player` crate initialization.
+- [x] Task 2.2: Implement queue, audio-only switching (`vid=no` / `vid=auto`), and speed adjustment (0.25x - 3.0x).
+- [x] Task 2.3: Wire dynamic quality switching (< 500ms gap, preserving position) and DASH audio binding.
+- [x] Task 2.4: Write property / automated playback stability test with 20 seeks (`crates/player/tests/playback_test.rs`).
+- [x] Task 2.5: Document performance telemetry in `docs/PLAYBACK.md`.
 

@@ -1,10 +1,17 @@
 param (
     [int]$DurationSeconds = 15,
-    [string]$OutputFile = ""
+    [string]$OutputFile = "",
+    [string]$Config = "release"
 )
 
-Write-Host "Starting Litube for memory measurement..."
-$proc = Start-Process -FilePath "target\debug\src-tauri.exe" -PassThru
+$exePath = if ($Config -eq "release" -and (Test-Path "target\release\src-tauri.exe")) {
+    "target\release\src-tauri.exe"
+} else {
+    "target\debug\src-tauri.exe"
+}
+
+Write-Host "Starting Litube ($exePath) for memory measurement..."
+$proc = Start-Process -FilePath $exePath -PassThru
 
 $samples = @()
 $startTime = Get-Date
