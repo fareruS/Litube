@@ -727,6 +727,9 @@
     }
 
     /* Picture-in-Picture (PiP) Mode */
+    body.is-pip {
+      background: transparent !important;
+    }
     body.is-pip .header-bar {
       display: none !important;
     }
@@ -750,14 +753,83 @@
       height: 100vh;
       background: #000;
       z-index: 9999;
+      overflow: hidden;
     }
     body.is-pip .player-column {
       width: 100%;
       height: 100%;
+      position: relative;
     }
     body.is-pip #video-hole {
+      position: absolute;
+      top: 28px;
+      left: 0;
       width: 100%;
-      height: 100%;
+      height: calc(100% - 28px);
+    }
+
+    /* PiP Overlay Bar */
+    .pip-hover-bar {
+      display: none;
+    }
+    body.is-pip .pip-hover-bar {
+      display: flex;
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 28px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 8px;
+      background: #121214;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      z-index: 200;
+      user-select: none;
+      cursor: grab;
+    }
+    body.is-pip:hover .pip-hover-bar {
+      opacity: 1;
+    }
+    body.is-pip .pip-hover-bar:active {
+      cursor: grabbing;
+    }
+    .pip-brand {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.8);
+      letter-spacing: 0.3px;
+      pointer-events: none;
+    }
+    .pip-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #ef4444;
+    }
+    .pip-overlay-close-btn {
+      width: 20px;
+      height: 20px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .pip-overlay-close-btn:hover {
+      background: #ef4444;
+      border-color: #ef4444;
     }
     body.is-pip .controls-panel {
       position: absolute;
@@ -912,6 +984,7 @@
 
       <div class="header-right">
         <div id="status-label" class="header-status">Ready</div>
+        <button id="btn-open-account" class="btn" style="height:30px; padding:0 10px;">Sign In</button>
         <button id="btn-open-settings" class="btn" style="height:30px; padding:0 10px;">Settings</button>
       </div>
     </header>
@@ -938,6 +1011,14 @@
       <!-- 2. Watch Player View -->
       <section id="watch-view">
         <div class="player-column">
+          <!-- PiP Top Bar Overlay on Hover -->
+          <div id="pip-hover-bar" class="pip-hover-bar" data-tauri-drag-region>
+            <div class="pip-brand" data-tauri-drag-region>
+              <span class="pip-dot"></span> Litube PiP
+            </div>
+            <button id="pip-overlay-close" class="pip-overlay-close-btn" title="Exit PiP">✕</button>
+          </div>
+
           <div id="video-hole"></div>
 
           <!-- Video Loading Overlay -->
@@ -1065,6 +1146,53 @@
     </div>
   </div>
 
+  <!-- Account & Sign In Modal Dialog -->
+  <div id="account-modal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <span>YouTube Account</span>
+        <button id="btn-close-account" class="btn" style="height:26px; padding:0 8px;">Done</button>
+      </div>
+      <div class="modal-body">
+        <div class="setting-item">
+          <div class="setting-label-box">
+            <span class="setting-title">Sign-In Status</span>
+            <span id="account-status-desc" class="setting-desc">Not signed in (Public mode)</span>
+          </div>
+          <span id="account-badge" style="font-size:11px; padding:2px 8px; border-radius:4px; background:#27272a; color:#a1a1aa; font-weight:600;">Guest</span>
+        </div>
+
+        <div id="account-signin-section">
+          <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.5;">
+            Import your YouTube session cookies to unlock age-restricted videos, private playlists, and channel subscriptions.
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <label class="btn" style="cursor:pointer; width: fit-content;">
+              Choose cookies.txt File
+              <input type="file" id="input-cookie-file" accept=".txt" style="display:none;" />
+            </label>
+            <span id="cookie-file-name" style="font-size:11px; color:var(--text-muted);">No file selected</span>
+          </div>
+
+          <div style="margin-top: 12px;">
+            <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">Or paste Netscape cookie text:</div>
+            <textarea id="cookie-paste-area" class="input-compact" style="width:100%; height:65px; resize:vertical; font-family:monospace; font-size:11px; padding:6px;" placeholder="# Netscape HTTP Cookie File..."></textarea>
+          </div>
+
+          <button id="btn-save-cookies" class="btn primary" style="margin-top:10px; width:100%;">Save & Sign In</button>
+        </div>
+
+        <div id="account-signedin-section" style="display:none;">
+          <div style="font-size: 12px; color: #22c55e; margin-bottom: 12px;">
+            ✓ Active cookies loaded. Authenticated requests enabled.
+          </div>
+          <button id="btn-sign-out" class="btn" style="width:100%; border-color:#ef4444; color:#ef4444;">Sign Out / Remove Cookies</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
     // App State
     let currentView = 'feed'; // 'feed' | 'watch'
@@ -1129,6 +1257,21 @@
     const miniChannel = document.getElementById('mini-channel');
     const miniBtnPause = document.getElementById('mini-btn-pause');
     const miniBtnClose = document.getElementById('mini-btn-close');
+
+    // PiP Overlay & Account Elements
+    const pipOverlayClose = document.getElementById('pip-overlay-close');
+    const btnOpenAccount = document.getElementById('btn-open-account');
+    const btnCloseAccount = document.getElementById('btn-close-account');
+    const accountModal = document.getElementById('account-modal');
+    const accountStatusDesc = document.getElementById('account-status-desc');
+    const accountBadge = document.getElementById('account-badge');
+    const accountSigninSection = document.getElementById('account-signin-section');
+    const accountSignedinSection = document.getElementById('account-signedin-section');
+    const inputCookieFile = document.getElementById('input-cookie-file');
+    const cookieFileName = document.getElementById('cookie-file-name');
+    const cookiePasteArea = document.getElementById('cookie-paste-area');
+    const btnSaveCookies = document.getElementById('btn-save-cookies');
+    const btnSignOut = document.getElementById('btn-sign-out');
 
     // Safe Tauri IPC Helper
     async function invoke(cmd, args = {}) {
@@ -1466,6 +1609,84 @@
       setTimeout(syncHole, 150);
     }
 
+    // PiP Overlay Close
+    pipOverlayClose.addEventListener('click', (e) => {
+      e.stopPropagation();
+      togglePip();
+    });
+
+    // Account Modal & Authentication
+    btnOpenAccount.addEventListener('click', () => {
+      accountModal.classList.add('active');
+    });
+    btnCloseAccount.addEventListener('click', () => {
+      accountModal.classList.remove('active');
+    });
+
+    async function refreshAuthStatus() {
+      try {
+        const status = await invoke('auth_get_status');
+        if (status && status.signed_in) {
+          btnOpenAccount.innerText = 'Account';
+          btnOpenAccount.style.borderColor = '#22c55e';
+          accountStatusDesc.innerText = 'Signed In (Authenticated mode)';
+          accountBadge.innerText = 'Signed In';
+          accountBadge.style.background = '#15803d';
+          accountBadge.style.color = '#fff';
+          accountSigninSection.style.display = 'none';
+          accountSignedinSection.style.display = 'block';
+        } else {
+          btnOpenAccount.innerText = 'Sign In';
+          btnOpenAccount.style.borderColor = '';
+          accountStatusDesc.innerText = 'Not signed in (Public mode)';
+          accountBadge.innerText = 'Guest';
+          accountBadge.style.background = '#27272a';
+          accountBadge.style.color = '#a1a1aa';
+          accountSigninSection.style.display = 'block';
+          accountSignedinSection.style.display = 'none';
+        }
+      } catch (e) {}
+    }
+
+    inputCookieFile.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      cookieFileName.innerText = file.name;
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        cookiePasteArea.value = evt.target.result;
+      };
+      reader.readAsText(file);
+    });
+
+    btnSaveCookies.addEventListener('click', async () => {
+      const content = cookiePasteArea.value.trim();
+      if (!content) {
+        alert('Please select a cookies.txt file or paste cookie content.');
+        return;
+      }
+      try {
+        await invoke('auth_import_cookies', { content });
+        await refreshAuthStatus();
+        accountModal.classList.remove('active');
+        statusLabel.innerText = 'Signed In';
+      } catch (err) {
+        alert('Failed to import cookies: ' + err);
+      }
+    });
+
+    btnSignOut.addEventListener('click', async () => {
+      try {
+        await invoke('auth_sign_out');
+        await refreshAuthStatus();
+        cookiePasteArea.value = '';
+        cookieFileName.innerText = 'No file selected';
+        statusLabel.innerText = 'Signed Out';
+      } catch (err) {
+        alert('Failed to sign out: ' + err);
+      }
+    });
+
     // Settings Modal
     btnOpenSettings.addEventListener('click', () => {
       settingsModal.classList.add('active');
@@ -1757,6 +1978,7 @@
     window.addEventListener('DOMContentLoaded', () => {
       setView('feed');
       initSettings();
+      refreshAuthStatus();
       performSearch('trending');
     });
   </script>

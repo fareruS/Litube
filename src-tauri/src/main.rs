@@ -411,9 +411,11 @@ fn player_toggle_pip(window: tauri::WebviewWindow) -> Result<bool, String> {
             *PREV_SIZE.lock().unwrap() = Some((size.width as f64, size.height as f64));
         }
         let _ = window.set_always_on_top(true);
-        let _ = window.set_size(tauri::Size::Logical(tauri::LogicalSize { width: 420.0, height: 260.0 }));
+        let _ = window.set_decorations(false); // Frameless: no window titlebar in PiP
+        let _ = window.set_size(tauri::Size::Logical(tauri::LogicalSize { width: 420.0, height: 236.0 }));
     } else {
         let _ = window.set_always_on_top(false);
+        let _ = window.set_decorations(true); // Restore window decorations
         if let Some((w, h)) = *PREV_SIZE.lock().unwrap() {
             let _ = window.set_size(tauri::Size::Physical(tauri::PhysicalSize { width: w as u32, height: h as u32 }));
         } else {
@@ -423,6 +425,51 @@ fn player_toggle_pip(window: tauri::WebviewWindow) -> Result<bool, String> {
 
     IS_PIP.store(next, Ordering::SeqCst);
     Ok(next)
+}
+
+fn get_cookies_path() -> std::path::PathBuf {
+    std::env::var("APPDATA")
+        .map(|appdata| std::path::PathBuf::from(appdata).join("Litube").join("cookies.txt"))
+        .unwrap_or_else(|_| std::path::PathBuf::from("cookies.txt"))
+}
+
+#[derive(serde::Serialize)]
+struct AuthStatus {
+    signed_in: bool,
+    path: String,
+}
+
+#[tauri::command]
+fn auth_get_status() -> AuthStatus {
+    let path = get_cookies_path();
+    let signed_in = path.exists() && std::fs::metadata(&path).map(|m| m.len() > 10).unwrap_or(false);
+    AuthStatus {
+        signed_in,
+        path: path.to_string_lossy().into_owned(),
+    }
+}
+
+#[tauri::command]
+fn auth_import_cookies(content: String) -> Result<bool, String> {
+    let clean = content.trim();
+    if clean.is_empty() {
+        return Err("Cookies content cannot be empty".into());
+    }
+    let path = get_cookies_path();
+    if let Some(parent) = path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    std::fs::write(&path, clean).map_err(|e| format!("Failed to save cookies: {e}"))?;
+    Ok(true)
+}
+
+#[tauri::command]
+fn auth_sign_out() -> Result<bool, String> {
+    let path = get_cookies_path();
+    if path.exists() {
+        let _ = std::fs::remove_file(path);
+    }
+    Ok(false)
 }
 
 fn main() {
@@ -480,7 +527,10 @@ fn main() {
             store_add_subscription,
             store_remove_subscription,
             store_get_subscriptions,
-            store_is_subscribed
+            store_is_subscribed,
+            auth_get_status,
+            auth_import_cookies,
+            auth_sign_out
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {

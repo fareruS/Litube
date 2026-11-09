@@ -59,6 +59,17 @@ impl YtDlpSource {
         cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW: completely hides terminal window
         cmd.stdout(std::process::Stdio::piped());
         cmd.stderr(std::process::Stdio::piped());
+
+        // Attach cookies if user is signed in via imported cookies
+        if let Ok(appdata) = std::env::var("APPDATA") {
+            let cookies_file = std::path::PathBuf::from(appdata).join("Litube").join("cookies.txt");
+            if cookies_file.exists() {
+                if let Some(path_str) = cookies_file.to_str() {
+                    cmd.args(["--cookies", path_str]);
+                }
+            }
+        }
+
         cmd
     }
 

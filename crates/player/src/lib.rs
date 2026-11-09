@@ -44,16 +44,16 @@ impl VideoPlayer {
         mpv.set_property("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36")
             .map_err(|e| PlayerError::SetProperty(format!("Failed to set user-agent: {e}")))?;
 
-        // 3. Resilient streaming buffer: holds ~5 minutes of stream in memory for zero stutter
+        // 3. Strict streaming buffer: capped at 48 MiB RAM to prevent memory creeping from 200MB to 340MB+
         mpv.set_property("cache", "yes")
             .map_err(|e| PlayerError::SetProperty(format!("Failed to set cache: {e}")))?;
-        mpv.set_property("demuxer-max-bytes", 128 * 1024 * 1024 as i64) // 128 MiB RAM buffer
+        mpv.set_property("demuxer-max-bytes", 48 * 1024 * 1024 as i64) // 48 MiB RAM buffer (holds ~10-18 min of stream)
             .map_err(|e| PlayerError::SetProperty(format!("Failed to set demuxer-max-bytes: {e}")))?;
-        mpv.set_property("demuxer-max-back-bytes", 32 * 1024 * 1024 as i64) // 32 MiB backward buffer
+        mpv.set_property("demuxer-max-back-bytes", 8 * 1024 * 1024 as i64) // 8 MiB backward buffer
             .map_err(|e| PlayerError::SetProperty(format!("Failed to set demuxer-max-back-bytes: {e}")))?;
-        mpv.set_property("demuxer-readahead-secs", 120.0) // prefetch up to 120 seconds ahead
+        mpv.set_property("demuxer-readahead-secs", 60.0) // prefetch up to 60 seconds ahead
             .map_err(|e| PlayerError::SetProperty(format!("Failed to set demuxer-readahead-secs: {e}")))?;
-        mpv.set_property("cache-secs", 180.0)
+        mpv.set_property("cache-secs", 90.0)
             .map_err(|e| PlayerError::SetProperty(format!("Failed to set cache-secs: {e}")))?;
         mpv.set_property("cache-pause", "yes")
             .map_err(|e| PlayerError::SetProperty(format!("Failed to set cache-pause: {e}")))?;
