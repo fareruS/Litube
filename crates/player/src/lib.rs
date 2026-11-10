@@ -44,31 +44,34 @@ impl VideoPlayer {
         mpv.set_property("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36")
             .map_err(|e| PlayerError::SetProperty(format!("Failed to set user-agent: {e}")))?;
 
-        // 3. Strict streaming buffer: capped at 48 MiB RAM to prevent memory creeping from 200MB to 340MB+
+        // 3. Streaming buffer: capped at 64 MiB RAM to prevent memory creeping while ensuring healthy reservoir
         mpv.set_property("cache", "yes")
             .map_err(|e| PlayerError::SetProperty(format!("Failed to set cache: {e}")))?;
-        mpv.set_property("demuxer-max-bytes", 48 * 1024 * 1024 as i64) // 48 MiB RAM buffer (holds ~10-18 min of stream)
+        mpv.set_property("demuxer-max-bytes", 64 * 1024 * 1024 as i64) // 64 MiB RAM buffer (~15-20 min at 360p/480p)
             .map_err(|e| PlayerError::SetProperty(format!("Failed to set demuxer-max-bytes: {e}")))?;
-        mpv.set_property("demuxer-max-back-bytes", 8 * 1024 * 1024 as i64) // 8 MiB backward buffer
+        mpv.set_property("demuxer-max-back-bytes", 16 * 1024 * 1024 as i64) // 16 MiB backward buffer
             .map_err(|e| PlayerError::SetProperty(format!("Failed to set demuxer-max-back-bytes: {e}")))?;
-        mpv.set_property("demuxer-readahead-secs", 60.0) // prefetch up to 60 seconds ahead
+        mpv.set_property("demuxer-readahead-secs", 120.0) // prefetch up to 120 seconds ahead
             .map_err(|e| PlayerError::SetProperty(format!("Failed to set demuxer-readahead-secs: {e}")))?;
-        mpv.set_property("cache-secs", 90.0)
+        mpv.set_property("cache-secs", 120.0)
             .map_err(|e| PlayerError::SetProperty(format!("Failed to set cache-secs: {e}")))?;
         mpv.set_property("cache-pause", "yes")
             .map_err(|e| PlayerError::SetProperty(format!("Failed to set cache-pause: {e}")))?;
-        mpv.set_property("cache-pause-wait", 1.5) // quick 1.5s cushion resumes playback fast without 5s freezes
+        mpv.set_property("cache-pause-wait", 6.0) // 6.0s cushion guarantees smooth continuous playback without 1.5s stutter loops
             .map_err(|e| PlayerError::SetProperty(format!("Failed to set cache-pause-wait: {e}")))?;
         mpv.set_property("cache-pause-initial", "yes")
             .map_err(|e| PlayerError::SetProperty(format!("Failed to set cache-pause-initial: {e}")))?;
         let _ = mpv.set_property("framedrop", "vo");
-        let _ = mpv.set_property("demuxer-lavf-buffersize", 1048576 as i64);
+        let _ = mpv.set_property("demuxer-lavf-buffersize", 2097152 as i64); // 2 MiB AVIO buffer
 
-        // YouTube CDN headers (comma-separated list per mpv string list specification) & reconnect flags
+        // Hardware audio buffer: 500ms prevents WASAPI device underruns
+        let _ = mpv.set_property("audio-buffer", 0.5);
+
+        // YouTube CDN headers (matching modern browser fetch) & reconnect flags
         let _ = mpv.set_property("referrer", "https://www.youtube.com/");
         let _ = mpv.set_property(
             "http-header-fields",
-            "Origin: https://www.youtube.com,Referer: https://www.youtube.com/,Sec-Fetch-Mode: navigate",
+            "Origin: https://www.youtube.com,Referer: https://www.youtube.com/,Sec-Fetch-Mode: cors,Sec-Fetch-Dest: empty",
         );
         let _ = mpv.set_property("stream-lavf-o", "reconnect_streamed=1,reconnect=1,reconnect_on_http_error=4xx,5xx,reconnect_delay_max=2");
         let _ = mpv.set_property("network-timeout", 20 as i64);

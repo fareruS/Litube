@@ -245,9 +245,9 @@ impl StreamSource for YtDlpSource {
             }
         }
 
-        // Prioritize VP9 WebM and Opus audio; for <=360p prefer single pre-muxed streams to avoid dual-connection overhead
+        // Prioritize format 18 (unthrottled ratebypass single stream) for <=360p; fallback to VP9 WebM and Opus audio
         let format_filter = if height <= 360 {
-            "best[height<=360]/bestvideo[height<=360][vcodec^=vp9]+bestaudio[acodec^=opus]/bestvideo[height<=360]+bestaudio/best".to_string()
+            "18/best[height<=360]/bestvideo[height<=360][vcodec^=vp9]+bestaudio[acodec^=opus]/bestvideo[height<=360]+bestaudio/best".to_string()
         } else {
             format!(
                 "bestvideo[height<={height}][vcodec^=vp9]+bestaudio[acodec^=opus]/bestvideo[height<={height}][vcodec^=av01]+bestaudio/bestvideo[height<={height}]+bestaudio/best[height<={height}]/best"
@@ -261,6 +261,8 @@ impl StreamSource for YtDlpSource {
             "--no-warnings",
             "--js-runtimes",
             "node",
+            "--extractor-args",
+            "youtube:player_client=android,web,tv",
             "-f",
             &format_filter,
             "-g",

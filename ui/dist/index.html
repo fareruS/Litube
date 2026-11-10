@@ -2195,13 +2195,13 @@
               showVideoLoader(`Buffering stream (${resLabel})...`);
 
               const now = Date.now();
-              if (now - lastUnderrunTime > 3000) {
+              if (now - lastUnderrunTime > 4000) {
                 lastUnderrunTime = now;
                 bufferUnderruns++;
               }
 
               // Adaptive Bitrate: If buffer repeatedly underruns on a slow connection, auto-downgrade
-              if (bufferUnderruns >= 2 && !autoDowngradePending && effectiveHeight > 360) {
+              if (bufferUnderruns >= 4 && !autoDowngradePending && effectiveHeight > 360) {
                 autoDowngradePending = true;
                 bufferUnderruns = 0;
                 const nextHeight = effectiveHeight > 720 ? 720 : (effectiveHeight > 480 ? 480 : 360);
