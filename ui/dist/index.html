@@ -1570,6 +1570,9 @@
       currentVideoTitle = title || id;
       currentChannelTitle = channel || 'YouTube';
       currentThumbnailUrl = thumb || '';
+      if (selectRes.value === 'auto' && startTime !== -1.0) {
+        effectiveHeight = 480;
+      }
       activeTitle.innerText = currentVideoTitle;
       activeChannel.innerText = currentChannelTitle;
 
@@ -1981,7 +1984,21 @@
         settingDefaultRes.value = effectiveRes;
         selectRes.value = effectiveRes;
         effectiveHeight = effectiveRes === 'auto' ? 480 : parseInt(effectiveRes, 10);
-      } catch (e) {}
+
+        const savedVolume = await invoke('store_get_setting', { key: 'volume' });
+        const currentVolume = savedVolume === null
+          ? await invoke('player_get_volume')
+          : Number(savedVolume);
+        if (typeof currentVolume === 'number' && Number.isFinite(currentVolume)) {
+          const volume = Math.max(0, Math.min(100, currentVolume));
+          volSlider.value = String(volume);
+          volText.innerText = `${Math.round(volume)}%`;
+          await invoke('player_set_volume', { volume });
+        }
+      } catch (e) {
+        console.error('Failed to load settings:', e);
+        statusLabel.innerText = 'Settings could not be loaded';
+      }
     }
 
     // Navigation Events
@@ -2063,6 +2080,18 @@
       const val = parseFloat(volSlider.value);
       volText.innerText = `${Math.round(val)}%`;
       invoke('player_set_volume', { volume: val });
+    });
+
+    volSlider.addEventListener('change', async () => {
+      try {
+        await invoke('store_set_setting', {
+          key: 'volume',
+          value: volSlider.value,
+        });
+      } catch (e) {
+        console.error('Failed to save volume setting:', e);
+        statusLabel.innerText = 'Volume setting could not be saved';
+      }
     });
 
     btnAudioOnly.addEventListener('click', async () => {

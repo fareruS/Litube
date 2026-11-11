@@ -393,11 +393,6 @@ fn store_is_subscribed(
 }
 
 #[tauri::command]
-fn system_trim_memory() {
-    trim_process_working_set();
-}
-
-#[tauri::command]
 fn player_toggle_pip(window: tauri::WebviewWindow) -> Result<bool, String> {
     use std::sync::atomic::Ordering;
     let current = IS_PIP.load(Ordering::SeqCst);
@@ -656,7 +651,6 @@ fn main() {
             store_get_history,
             store_set_setting,
             store_get_setting,
-            system_trim_memory,
             player_toggle_pip,
             player_set_visible,
             store_add_subscription,
