@@ -1,6 +1,12 @@
 use std::sync::{Arc, Mutex};
 use thiserror::Error;
 
+const DEMUXER_MAX_BYTES: i64 = 64 * 1024 * 1024;
+const DEMUXER_MAX_BACK_BYTES: i64 = 16 * 1024 * 1024;
+const DEMUXER_READAHEAD_SECS: f64 = 120.0;
+const CACHE_SECS: f64 = 120.0;
+const CACHE_PAUSE_WAIT: f64 = 6.0;
+
 #[derive(Error, Debug)]
 pub enum PlayerError {
     #[error("libmpv initialization failed: {0}")]
@@ -44,23 +50,7 @@ impl VideoPlayer {
         mpv.set_property("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36")
             .map_err(|e| PlayerError::SetProperty(format!("Failed to set user-agent: {e}")))?;
 
-        // 3. Streaming buffer: capped at 64 MiB RAM to prevent memory creeping while ensuring healthy reservoir
-        mpv.set_property("cache", "yes")
-            .map_err(|e| PlayerError::SetProperty(format!("Failed to set cache: {e}")))?;
-        mpv.set_property("demuxer-max-bytes", 64 * 1024 * 1024 as i64) // 64 MiB RAM buffer (~15-20 min at 360p/480p)
-            .map_err(|e| PlayerError::SetProperty(format!("Failed to set demuxer-max-bytes: {e}")))?;
-        mpv.set_property("demuxer-max-back-bytes", 16 * 1024 * 1024 as i64) // 16 MiB backward buffer
-            .map_err(|e| PlayerError::SetProperty(format!("Failed to set demuxer-max-back-bytes: {e}")))?;
-        mpv.set_property("demuxer-readahead-secs", 120.0) // prefetch up to 120 seconds ahead
-            .map_err(|e| PlayerError::SetProperty(format!("Failed to set demuxer-readahead-secs: {e}")))?;
-        mpv.set_property("cache-secs", 120.0)
-            .map_err(|e| PlayerError::SetProperty(format!("Failed to set cache-secs: {e}")))?;
-        mpv.set_property("cache-pause", "yes")
-            .map_err(|e| PlayerError::SetProperty(format!("Failed to set cache-pause: {e}")))?;
-        mpv.set_property("cache-pause-wait", 6.0) // 6.0s cushion guarantees smooth continuous playback without 1.5s stutter loops
-            .map_err(|e| PlayerError::SetProperty(format!("Failed to set cache-pause-wait: {e}")))?;
-        mpv.set_property("cache-pause-initial", "yes")
-            .map_err(|e| PlayerError::SetProperty(format!("Failed to set cache-pause-initial: {e}")))?;
+        configure_buffering(&mpv)?;
         let _ = mpv.set_property("framedrop", "vo");
         let _ = mpv.set_property("demuxer-lavf-buffersize", 2097152 as i64); // 2 MiB AVIO buffer
 
@@ -75,7 +65,6 @@ impl VideoPlayer {
         );
         let _ = mpv.set_property("stream-lavf-o", "reconnect_streamed=1,reconnect=1,reconnect_on_http_error=4xx,5xx,reconnect_delay_max=2");
         let _ = mpv.set_property("network-timeout", 20 as i64);
-        let _ = mpv.set_property("tls-verify", "no");
 
         // Logging to temp directory for troubleshooting
         let log_path = std::env::temp_dir().join("litube_mpv.log");
@@ -85,12 +74,14 @@ impl VideoPlayer {
 
         mpv.set_property("gapless-audio", "yes")
             .map_err(|e| PlayerError::SetProperty(format!("Failed to set gapless-audio: {e}")))?;
-        mpv.set_property("prefetch-playlist", "yes")
-            .map_err(|e| PlayerError::SetProperty(format!("Failed to set prefetch-playlist: {e}")))?;
+        mpv.set_property("prefetch-playlist", "yes").map_err(|e| {
+            PlayerError::SetProperty(format!("Failed to set prefetch-playlist: {e}"))
+        })?;
         mpv.set_property("hr-seek", "default")
             .map_err(|e| PlayerError::SetProperty(format!("Failed to set hr-seek: {e}")))?;
-        mpv.set_property("hr-seek-framedrop", "yes")
-            .map_err(|e| PlayerError::SetProperty(format!("Failed to set hr-seek-framedrop: {e}")))?;
+        mpv.set_property("hr-seek-framedrop", "yes").map_err(|e| {
+            PlayerError::SetProperty(format!("Failed to set hr-seek-framedrop: {e}"))
+        })?;
 
         Ok(Self {
             mpv: Arc::new(Mutex::new(mpv)),
@@ -106,6 +97,7 @@ impl VideoPlayer {
             .map_err(|e| PlayerError::SetProperty(format!("Failed to set ao: {e}")))?;
         mpv.set_property("ytdl", "no")
             .map_err(|e| PlayerError::SetProperty(format!("Failed to set ytdl: {e}")))?;
+        configure_buffering(&mpv)?;
 
         Ok(Self {
             mpv: Arc::new(Mutex::new(mpv)),
@@ -159,9 +151,7 @@ impl VideoPlayer {
 
     pub fn toggle_pause(&self) -> Result<bool, PlayerError> {
         let mpv = self.mpv.lock().unwrap();
-        let paused: bool = mpv
-            .get_property("pause")
-            .unwrap_or(false);
+        let paused: bool = mpv.get_property("pause").unwrap_or(false);
         let next = !paused;
         mpv.set_property("pause", next)
             .map_err(|e| PlayerError::SetProperty(format!("pause failed: {e}")))?;
@@ -251,5 +241,52 @@ impl VideoPlayer {
     pub fn get_audio_files(&self) -> String {
         let mpv = self.mpv.lock().unwrap();
         mpv.get_property("audio-files").unwrap_or_default()
+    }
+}
+
+fn configure_buffering(mpv: &libmpv2::Mpv) -> Result<(), PlayerError> {
+    mpv.set_property("cache", "yes")
+        .map_err(|e| PlayerError::SetProperty(format!("Failed to set cache: {e}")))?;
+    mpv.set_property("demuxer-max-bytes", DEMUXER_MAX_BYTES)
+        .map_err(|e| PlayerError::SetProperty(format!("Failed to set demuxer-max-bytes: {e}")))?;
+    mpv.set_property("demuxer-max-back-bytes", DEMUXER_MAX_BACK_BYTES)
+        .map_err(|e| {
+            PlayerError::SetProperty(format!("Failed to set demuxer-max-back-bytes: {e}"))
+        })?;
+    mpv.set_property("demuxer-readahead-secs", DEMUXER_READAHEAD_SECS)
+        .map_err(|e| {
+            PlayerError::SetProperty(format!("Failed to set demuxer-readahead-secs: {e}"))
+        })?;
+    mpv.set_property("cache-secs", CACHE_SECS)
+        .map_err(|e| PlayerError::SetProperty(format!("Failed to set cache-secs: {e}")))?;
+    mpv.set_property("cache-pause", "yes")
+        .map_err(|e| PlayerError::SetProperty(format!("Failed to set cache-pause: {e}")))?;
+    mpv.set_property("cache-pause-wait", CACHE_PAUSE_WAIT)
+        .map_err(|e| PlayerError::SetProperty(format!("Failed to set cache-pause-wait: {e}")))?;
+    mpv.set_property("cache-pause-initial", "yes")
+        .map_err(|e| PlayerError::SetProperty(format!("Failed to set cache-pause-initial: {e}")))?;
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn headless_player_uses_bounded_streaming_cache() {
+        let player = VideoPlayer::new_headless().expect("Headless player must initialize");
+        let mpv = player.mpv.lock().unwrap();
+
+        let max_bytes: i64 = mpv.get_property("demuxer-max-bytes").unwrap();
+        let max_back_bytes: i64 = mpv.get_property("demuxer-max-back-bytes").unwrap();
+        let readahead_secs: f64 = mpv.get_property("demuxer-readahead-secs").unwrap();
+        let cache_secs: f64 = mpv.get_property("cache-secs").unwrap();
+        let pause_wait: f64 = mpv.get_property("cache-pause-wait").unwrap();
+
+        assert_eq!(max_bytes, DEMUXER_MAX_BYTES);
+        assert_eq!(max_back_bytes, DEMUXER_MAX_BACK_BYTES);
+        assert_eq!(readahead_secs, DEMUXER_READAHEAD_SECS);
+        assert_eq!(cache_secs, CACHE_SECS);
+        assert_eq!(pause_wait, CACHE_PAUSE_WAIT);
     }
 }

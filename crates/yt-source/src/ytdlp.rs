@@ -62,7 +62,9 @@ impl YtDlpSource {
 
         // Attach cookies if user is signed in via imported cookies
         if let Ok(appdata) = std::env::var("APPDATA") {
-            let cookies_file = std::path::PathBuf::from(appdata).join("Litube").join("cookies.txt");
+            let cookies_file = std::path::PathBuf::from(appdata)
+                .join("Litube")
+                .join("cookies.txt");
             if cookies_file.exists() {
                 if let Some(path_str) = cookies_file.to_str() {
                     cmd.args(["--cookies", path_str]);
@@ -118,7 +120,13 @@ impl StreamSource for YtDlpSource {
     async fn search(&self, q: &SearchQuery) -> Result<Page<VideoCard>, SourceError> {
         let query_arg = format!("ytsearch15:{}", q.term);
         let mut cmd = self.new_command();
-        cmd.args(["--dump-single-json", "--flat-playlist", "--skip-download", "--", &query_arg]);
+        cmd.args([
+            "--dump-single-json",
+            "--flat-playlist",
+            "--skip-download",
+            "--",
+            &query_arg,
+        ]);
         let output = Self::execute_isolated(&self.search_cancel, cmd).await?;
 
         if !output.status.success() {
@@ -134,11 +142,20 @@ impl StreamSource for YtDlpSource {
             for entry in entries {
                 let id = entry.get("id").and_then(|v| v.as_str()).unwrap_or_default();
                 let ie_key = entry.get("ie_key").and_then(|v| v.as_str()).unwrap_or("");
-                if id.is_empty() || ie_key == "YoutubeTab" || (id.starts_with("UC") && id.len() >= 24) {
+                if id.is_empty()
+                    || ie_key == "YoutubeTab"
+                    || (id.starts_with("UC") && id.len() >= 24)
+                {
                     continue;
                 }
-                let title = entry.get("title").and_then(|v| v.as_str()).unwrap_or("Untitled");
-                let channel_id = entry.get("channel_id").and_then(|v| v.as_str()).unwrap_or("");
+                let title = entry
+                    .get("title")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("Untitled");
+                let channel_id = entry
+                    .get("channel_id")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
                 let channel_title = entry
                     .get("channel")
                     .or_else(|| entry.get("uploader"))
@@ -189,9 +206,21 @@ impl StreamSource for YtDlpSource {
         let json: serde_json::Value = serde_json::from_slice(&output.stdout)
             .map_err(|e| SourceError::Parse(format!("Invalid video details JSON: {e}")))?;
 
-        let title = json.get("title").and_then(|v| v.as_str()).unwrap_or("Untitled").to_string();
-        let description = json.get("description").and_then(|v| v.as_str()).unwrap_or("").to_string();
-        let channel_id = json.get("channel_id").and_then(|v| v.as_str()).unwrap_or("").to_string();
+        let title = json
+            .get("title")
+            .and_then(|v| v.as_str())
+            .unwrap_or("Untitled")
+            .to_string();
+        let description = json
+            .get("description")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        let channel_id = json
+            .get("channel_id")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
         let channel_title = json
             .get("channel")
             .or_else(|| json.get("uploader"))
@@ -304,9 +333,9 @@ impl StreamSource for YtDlpSource {
         Capabilities {
             can_search: true,
             can_stream_dash: true,
-            can_stream_audio_only: true,
-            supports_chapters: true,
-            supports_subtitles: true,
+            can_stream_audio_only: false,
+            supports_chapters: false,
+            supports_subtitles: false,
         }
     }
 }

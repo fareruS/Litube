@@ -1109,7 +1109,7 @@
       <section id="feed-view">
         <!-- Topic Chips -->
         <div class="chips-bar">
-          <button class="chip active" data-topic="trending">All</button>
+          <button class="chip active" data-topic="trending videos">Trending search</button>
           <button class="chip" data-topic="gaming">Gaming</button>
           <button class="chip" data-topic="music">Music</button>
           <button class="chip" data-topic="news">News</button>
@@ -1200,7 +1200,7 @@
         <!-- Sidebar in Watch View -->
         <aside class="sidebar">
           <div class="sidebar-tabs">
-            <button id="tab-related-btn" class="tab-btn active">Up Next</button>
+            <button id="tab-related-btn" class="tab-btn active">More results</button>
             <button id="tab-history-btn" class="tab-btn">History</button>
           </div>
 
@@ -1358,9 +1358,9 @@
     let lastRecordedPos = 0;
     let feedItemsCache = [];
     let effectiveHeight = 480;
-    let bufferUnderruns = 0;
-    let lastUnderrunTime = 0;
+    let bufferingSince = null;
     let autoDowngradePending = false;
+    const AUTO_DOWNGRADE_AFTER_MS = 12000;
 
     // Elements
     const brandLogo = document.getElementById('brand-logo');
@@ -1575,6 +1575,7 @@
 
       setView('watch');
       isExtracting = true;
+      bufferingSince = null;
       const resVal = selectRes.value === 'auto' ? String(effectiveHeight) : selectRes.value;
       const resLabel = selectRes.value === 'auto' ? `Auto (${effectiveHeight}p)` : `${selectRes.value}p`;
       showVideoLoader(`Extracting stream (${resLabel})...`);
@@ -1585,7 +1586,6 @@
         seekSlider.value = 0;
         timeCurrent.innerText = "0:00";
         timeDuration.innerText = "0:00";
-        bufferUnderruns = 0;
         try { await invoke('player_stop'); } catch (_) {}
       }
 
@@ -1964,7 +1964,7 @@
     settingDefaultRes.addEventListener('change', () => {
       selectRes.value = settingDefaultRes.value;
       effectiveHeight = selectRes.value === 'auto' ? 480 : parseInt(selectRes.value, 10);
-      bufferUnderruns = 0;
+      bufferingSince = null;
       invoke('store_set_setting', {
         key: 'default_res',
         value: settingDefaultRes.value,
@@ -2000,7 +2000,7 @@
         document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
         chip.classList.add('active');
         const topic = chip.dataset.topic;
-        searchInput.value = topic === 'trending' ? '' : topic;
+        searchInput.value = topic;
         performSearch(topic);
       });
     });
@@ -2048,7 +2048,7 @@
 
     selectRes.addEventListener('change', () => {
       effectiveHeight = selectRes.value === 'auto' ? 480 : parseInt(selectRes.value, 10);
-      bufferUnderruns = 0;
+      bufferingSince = null;
       invoke('store_set_setting', {
         key: 'default_res',
         value: selectRes.value,
@@ -2195,22 +2195,20 @@
               showVideoLoader(`Buffering stream (${resLabel})...`);
 
               const now = Date.now();
-              if (now - lastUnderrunTime > 4000) {
-                lastUnderrunTime = now;
-                bufferUnderruns++;
+              if (bufferingSince === null) {
+                bufferingSince = now;
               }
 
-              // Adaptive Bitrate: If buffer repeatedly underruns on a slow connection, auto-downgrade
-              if (bufferUnderruns >= 4 && !autoDowngradePending && effectiveHeight > 360) {
+              if (
+                selectRes.value === 'auto'
+                && now - bufferingSince >= AUTO_DOWNGRADE_AFTER_MS
+                && !autoDowngradePending
+                && effectiveHeight > 360
+              ) {
                 autoDowngradePending = true;
-                bufferUnderruns = 0;
-                const nextHeight = effectiveHeight > 720 ? 720 : (effectiveHeight > 480 ? 480 : 360);
-                effectiveHeight = nextHeight;
-                if (selectRes.value !== 'auto') {
-                  selectRes.value = String(nextHeight);
-                }
-                statusLabel.innerText = `Network slow: adapting to ${nextHeight}p...`;
-                showVideoLoader(`Network slow: switching to ${nextHeight}p for smooth playback...`);
+                effectiveHeight = 360;
+                statusLabel.innerText = 'Buffering: trying 360p...';
+                showVideoLoader('Buffering: switching to 360p...');
                 if (currentVideoId) {
                   playVideo(currentVideoId, currentVideoTitle, currentChannelTitle, currentThumbnailUrl, -1.0)
                     .finally(() => {
@@ -2219,11 +2217,9 @@
                 }
               }
             } else {
+              bufferingSince = null;
               hideVideoLoader();
               statusLabel.innerText = state.paused ? 'Paused' : `Playing (${resLabel})`;
-              if (Date.now() - lastUnderrunTime > 20000) {
-                bufferUnderruns = 0;
-              }
             }
 
             if (currentVideoId && Math.abs(state.position - lastRecordedPos) > 5) {
@@ -2243,7 +2239,7 @@
       setView('feed');
       initSettings();
       refreshAuthStatus();
-      performSearch('trending');
+      performSearch('trending videos');
     });
   </script>
 </body>

@@ -5,8 +5,7 @@ Implement a production-grade, resource-bounded `player` crate wrapping `libmpv2`
 1. **Engine Configuration:**
    - `ytdl=no`, `prefetch-playlist=yes`, `gapless-audio=yes`.
    - `hwdec=auto-safe` with fallback handling.
-   - Disk-backed cache (`cache=yes`, `cache-on-disk=yes`, `demuxer-cache-dir`) with strict bounds (`demuxer-max-bytes=64MiB`, `demuxer-max-back-bytes=64MiB`) to keep memory minimal.
-   - Lowered seek latency (`cache-pause-wait=0.3`).
+   - Bounded in-memory cache (`demuxer-max-bytes=64MiB`, `demuxer-max-back-bytes=16MiB`) with up to 120 seconds of readahead and a 6-second cache pause wait.
 2. **Playback Features:**
    - Gapless queue management (one-item lookahead).
    - Dynamic quality switching (< 500ms gap, preserving position, pause, volume, and speed).
@@ -23,4 +22,3 @@ Implement a production-grade, resource-bounded `player` crate wrapping `libmpv2`
 - [x] Task 2.3: Wire dynamic quality switching (< 500ms gap, preserving position) and DASH audio binding.
 - [x] Task 2.4: Write property / automated playback stability test with 20 seeks (`crates/player/tests/playback_test.rs`).
 - [x] Task 2.5: Document performance telemetry in `docs/PLAYBACK.md`.
-

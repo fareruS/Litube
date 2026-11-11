@@ -17,5 +17,4 @@
 ## CPU & GPU Efficiency
 - **Video Decoder:** Hardware decoding (`auto-safe` DXVA2/D3D11VA) reduces CPU usage to < 2.5% during 1080p60 playback
 - **Audio Resampler:** WASAPI direct push buffer
-- **Buffer Health:** Bounded 128 MiB demuxer cache with 180s forward readahead for zero network stutter on slow/variable connections
-
+- **Buffer Health:** Bounded 64 MiB forward / 16 MiB backward demuxer cache with a 120s readahead ceiling. The byte limit can reduce the actual cached duration, and no cache configuration guarantees stutter-free playback on an arbitrarily slow connection.

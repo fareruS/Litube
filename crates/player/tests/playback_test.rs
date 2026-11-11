@@ -5,32 +5,47 @@ fn test_player_initialization_and_audio_only_toggle() {
     let player = VideoPlayer::new_headless().expect("Headless player must initialize cleanly");
 
     // Verify speed control
-    player.set_speed(1.25).expect("Speed adjustment must succeed");
+    player
+        .set_speed(1.25)
+        .expect("Speed adjustment must succeed");
     player.set_speed(1.0).expect("Reset speed must succeed");
 
     // Verify volume control
-    player.set_volume(80.0).expect("Volume adjustment must succeed");
+    player
+        .set_volume(80.0)
+        .expect("Volume adjustment must succeed");
 
     // Verify audio-only toggle
-    player.set_audio_only(true).expect("Set audio-only must succeed");
+    player
+        .set_audio_only(true)
+        .expect("Set audio-only must succeed");
     assert!(player.is_audio_only());
 
-    player.set_audio_only(false).expect("Disable audio-only must succeed");
+    player
+        .set_audio_only(false)
+        .expect("Disable audio-only must succeed");
     assert!(!player.is_audio_only());
 }
 
 #[test]
 fn test_player_rapid_20_seeks_stability() {
     let player = VideoPlayer::new_headless().expect("Headless player must initialize cleanly");
+    let fixture =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/sample.mp4");
+    player
+        .load_file(fixture.to_str().expect("Fixture path must be valid UTF-8"))
+        .expect("Local fixture must load before seeking");
 
-    // Execute 20 consecutive seeks to test demuxer stability and state locks
+    // Seek within the local 60-second fixture to exercise the demuxer.
     for i in 1..=20 {
         let seek_pos = (i as f64) * 2.5;
-        let _ = player.seek_absolute(seek_pos);
-        let _ = player.seek(-1.0);
+        player
+            .seek_absolute(seek_pos)
+            .expect("Absolute seek should succeed");
+        player.seek(-1.0).expect("Relative seek should succeed");
     }
 
-    let _ = player.stop();
+    player.stop().expect("Player should stop cleanly");
 }
 
 #[test]
@@ -49,21 +64,13 @@ fn test_audio_and_start_properties() {
     // Verify start offset as string
     mpv.set_property("start", "42.50").unwrap();
 
-    // Verify buffer options
-    mpv.set_property("cache", "yes").unwrap();
-    mpv.set_property("demuxer-max-bytes", 128 * 1024 * 1024 as i64).unwrap();
-    mpv.set_property("demuxer-max-back-bytes", 32 * 1024 * 1024 as i64).unwrap();
-    mpv.set_property("demuxer-readahead-secs", 180.0).unwrap();
-    mpv.set_property("cache-secs", 300.0).unwrap();
-    mpv.set_property("cache-pause", "yes").unwrap();
-    mpv.set_property("cache-pause-wait", 4.0).unwrap();
-    mpv.set_property("cache-pause-initial", "yes").unwrap();
     mpv.set_property("scale", "bilinear").unwrap();
     mpv.set_property("cscale", "bilinear").unwrap();
     mpv.set_property("vd-lavc-dr", "yes").unwrap();
     mpv.set_property("vd-lavc-threads", 2 as i64).unwrap();
 
-    mpv.set_property("referrer", "https://www.youtube.com/").unwrap();
+    mpv.set_property("referrer", "https://www.youtube.com/")
+        .unwrap();
     mpv.set_property("http-header-fields", "Origin: https://www.youtube.com\r\nReferer: https://www.youtube.com/\r\nSec-Fetch-Mode: no-cors").unwrap();
 
     let pfc: bool = mpv.get_property("paused-for-cache").unwrap_or(false);
@@ -79,11 +86,23 @@ fn test_audio_and_start_properties() {
     assert!(player.is_paused());
 
     // Loading new video must unpause and load with replace
-    player.load_video_and_audio("https://example.com/vid1.mp4", "https://example.com/aud1.mp4", None).unwrap();
+    player
+        .load_video_and_audio(
+            "https://example.com/vid1.mp4",
+            "https://example.com/aud1.mp4",
+            None,
+        )
+        .unwrap();
     assert!(!player.is_paused());
 
     // Switching to second video must also succeed
-    player.load_video_and_audio("https://example.com/vid2.mp4", "https://example.com/vid2.mp4", Some(10.0)).unwrap();
+    player
+        .load_video_and_audio(
+            "https://example.com/vid2.mp4",
+            "https://example.com/vid2.mp4",
+            Some(10.0),
+        )
+        .unwrap();
     assert!(!player.is_paused());
 
     let aud = player.get_audio_files();
@@ -91,22 +110,29 @@ fn test_audio_and_start_properties() {
 }
 
 #[test]
+#[ignore = "requires yt-dlp, Node.js, and network access"]
 fn test_long_playback_stalling_or_stopping() {
     let mpv = libmpv2::Mpv::new().unwrap();
     mpv.set_property("vo", "null").unwrap();
     mpv.set_property("ao", "null").unwrap();
-    mpv.set_property("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)").unwrap();
+    mpv.set_property("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
+        .unwrap();
     mpv.set_property("cache", "yes").unwrap();
-    mpv.set_property("demuxer-max-bytes", 64 * 1024 * 1024 as i64).unwrap();
-    mpv.set_property("demuxer-max-back-bytes", 32 * 1024 * 1024 as i64).unwrap();
+    mpv.set_property("demuxer-max-bytes", 64 * 1024 * 1024 as i64)
+        .unwrap();
+    mpv.set_property("demuxer-max-back-bytes", 32 * 1024 * 1024 as i64)
+        .unwrap();
     mpv.set_property("cache-pause-wait", 0.5).unwrap();
     mpv.set_property("hr-seek", "yes").unwrap();
     mpv.set_property("hr-seek-framedrop", "yes").unwrap();
 
-    let sidecar_path = std::path::Path::new("../../vendor/yt-dlp.exe");
-    if !sidecar_path.exists() {
-        return;
-    }
+    let sidecar_path =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../vendor/yt-dlp.exe");
+    assert!(
+        sidecar_path.exists(),
+        "yt-dlp sidecar is missing: {}",
+        sidecar_path.display()
+    );
 
     let output = std::process::Command::new(sidecar_path)
         .args([
@@ -119,6 +145,11 @@ fn test_long_playback_stalling_or_stopping() {
         ])
         .output()
         .unwrap();
+    assert!(
+        output.status.success(),
+        "yt-dlp failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let mut lines = stdout.lines().filter(|l| l.starts_with("http"));
@@ -137,8 +168,12 @@ fn test_long_playback_stalling_or_stopping() {
         let core_idle: Result<bool, _> = mpv.get_property("core-idle");
         println!(
             "Sec {:.1}: pos={:?}, paused={:?}, eof={:?}, idle={:?}, core-idle={:?}",
-            (i as f64) * 0.5, pos, paused, eof, idle, core_idle
+            (i as f64) * 0.5,
+            pos,
+            paused,
+            eof,
+            idle,
+            core_idle
         );
     }
 }
-
