@@ -6,7 +6,7 @@ fn test_ytdlp_capabilities_match_implemented_features() {
     let caps = YtDlpSource::auto_detect().capabilities();
     assert!(caps.can_search);
     assert!(caps.can_stream_dash);
-    assert!(!caps.can_stream_audio_only);
+    assert!(caps.can_stream_audio_only);
     assert!(!caps.supports_chapters);
     assert!(!caps.supports_subtitles);
 }

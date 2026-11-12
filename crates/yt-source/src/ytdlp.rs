@@ -563,11 +563,16 @@ mod tests {
     #[test]
     fn expire_from_url_parses_googlevideo_timestamp() {
         assert_eq!(
-            expire_from_url("https://rr1---sn-abc.googlevideo.com/videoplayback?expire=1700021600&ei=xyz"),
+            expire_from_url(
+                "https://rr1---sn-abc.googlevideo.com/videoplayback?expire=1700021600&ei=xyz"
+            ),
             Some(1_700_021_600)
         );
         assert_eq!(expire_from_url("https://example.com/no-expire"), None);
-        assert_eq!(expire_from_url("https://example.com/?expire=notanumber"), None);
+        assert_eq!(
+            expire_from_url("https://example.com/?expire=notanumber"),
+            None
+        );
     }
 
     #[test]

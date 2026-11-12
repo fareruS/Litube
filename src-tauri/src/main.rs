@@ -216,11 +216,7 @@ fn player_toggle_audio_only(state: State<AppState>) -> Result<bool, String> {
         let current = player.is_audio_only();
         let next = !current;
         let position = player.get_position();
-        let start = if position > 0.0 {
-            Some(position)
-        } else {
-            None
-        };
+        let start = if position > 0.0 { Some(position) } else { None };
         if let Some((video_url, audio_url)) = state.current_media.lock().unwrap().clone() {
             if next {
                 // True audio-only: load the audio stream as the main file.
@@ -355,8 +351,7 @@ async fn play_youtube_id(
         player
             .load_video_and_audio(video_url, audio_url, resolved_start)
             .map_err(|e| e.to_string())?;
-        *state.current_media.lock().unwrap() =
-            Some((video_url.to_string(), audio_url.to_string()));
+        *state.current_media.lock().unwrap() = Some((video_url.to_string(), audio_url.to_string()));
         Ok(video_height)
     } else {
         Err("Player not initialized".into())

@@ -314,7 +314,11 @@ fn configure_buffering(mpv: &libmpv2::Mpv) -> Result<(), PlayerError> {
     // Disk cache: already-downloaded data survives seeks and quality
     // switches (loadfile replace) instead of being re-downloaded.
     let cache_dir = std::env::var("LOCALAPPDATA")
-        .map(|appdata| std::path::PathBuf::from(appdata).join("Litube").join("cache"))
+        .map(|appdata| {
+            std::path::PathBuf::from(appdata)
+                .join("Litube")
+                .join("cache")
+        })
         .unwrap_or_else(|_| std::env::temp_dir().join("Litube").join("cache"));
     if std::fs::create_dir_all(&cache_dir).is_ok() {
         if let Some(cache_dir_str) = cache_dir.to_str() {
@@ -347,7 +351,10 @@ mod tests {
         assert_eq!(readahead_secs, DEMUXER_READAHEAD_SECS);
         assert_eq!(cache_secs, CACHE_SECS);
         assert_eq!(pause_wait, CACHE_PAUSE_WAIT);
-        assert!(!pause_initial, "playback must start without waiting for cache fill");
+        assert!(
+            !pause_initial,
+            "playback must start without waiting for cache fill"
+        );
         assert!(cache_on_disk, "disk cache must be enabled");
     }
 }
