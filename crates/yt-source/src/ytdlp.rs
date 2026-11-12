@@ -13,8 +13,19 @@ pub struct YtDlpSource {
     binary_path: PathBuf,
     search_cancel: std::sync::Arc<tokio::sync::Mutex<Option<tokio::sync::oneshot::Sender<()>>>>,
     stream_cancel: std::sync::Arc<tokio::sync::Mutex<Option<tokio::sync::oneshot::Sender<()>>>>,
+    video_cancel: std::sync::Arc<tokio::sync::Mutex<Option<tokio::sync::oneshot::Sender<()>>>>,
     stream_cache: Arc<Mutex<HashMap<String, (PlayableMedia, Instant)>>>,
 }
+
+/// Hard timeout for a single yt-dlp invocation: without it a hung
+/// extractor leaves the UI stuck on "Extracting..." forever.
+const EXTRACTOR_TIMEOUT_SECS: u64 = 20;
+/// Reject absurdly large `--dump-single-json` output instead of letting it
+/// fill RAM (a single video's JSON is far below this).
+const MAX_EXTRACTOR_OUTPUT_BYTES: usize = 8 * 1024 * 1024;
+/// Treat a stream URL as expired this long before its `expire=` timestamp,
+/// so playback never starts on a URL that dies mid-load.
+const EXPIRY_SAFETY_MARGIN_SECS: u64 = 300;
 
 impl YtDlpSource {
     const PAGE_SIZE: u32 = 15;
@@ -24,6 +35,7 @@ impl YtDlpSource {
             binary_path: binary_path.into(),
             search_cancel: std::sync::Arc::new(tokio::sync::Mutex::new(None)),
             stream_cancel: std::sync::Arc::new(tokio::sync::Mutex::new(None)),
+            video_cancel: std::sync::Arc::new(tokio::sync::Mutex::new(None)),
             stream_cache: Arc::new(Mutex::new(HashMap::new())),
         }
     }
@@ -51,6 +63,7 @@ impl YtDlpSource {
             binary_path,
             search_cancel: std::sync::Arc::new(tokio::sync::Mutex::new(None)),
             stream_cancel: std::sync::Arc::new(tokio::sync::Mutex::new(None)),
+            video_cancel: std::sync::Arc::new(tokio::sync::Mutex::new(None)),
             stream_cache: Arc::new(Mutex::new(HashMap::new())),
         }
     }
@@ -107,11 +120,24 @@ impl YtDlpSource {
                     *lock = None;
                 }
                 let output = res.map_err(|e| SourceError::Network(format!("Extractor execution aborted: {e}")))?;
+                if output.stdout.len() > MAX_EXTRACTOR_OUTPUT_BYTES {
+                    return Err(SourceError::Parse(format!(
+                        "Extractor output too large ({} bytes, cap {} bytes)",
+                        output.stdout.len(),
+                        MAX_EXTRACTOR_OUTPUT_BYTES
+                    )));
+                }
                 Ok(output)
             }
             _ = &mut cancel_rx => {
                 // child future dropped here; kill_on_drop(true) automatically terminates the process safely
                 Err(SourceError::Network("Operation cancelled by newer request".into()))
+            }
+            _ = tokio::time::sleep(Duration::from_secs(EXTRACTOR_TIMEOUT_SECS)) => {
+                // child future dropped here; kill_on_drop(true) terminates the hung process
+                Err(SourceError::Network(format!(
+                    "Extractor timed out after {EXTRACTOR_TIMEOUT_SECS}s"
+                )))
             }
         }
     }
@@ -184,7 +210,7 @@ impl StreamSource for YtDlpSource {
         let url = format!("https://www.youtube.com/watch?v={}", id.0);
         let mut cmd = self.new_command();
         cmd.args(["--dump-single-json", "--skip-download", "--", &url]);
-        let output = Self::execute_isolated(&self.stream_cancel, cmd).await?;
+        let output = Self::execute_isolated(&self.video_cancel, cmd).await?;
 
         if !output.status.success() {
             let err = String::from_utf8_lossy(&output.stderr);
@@ -250,11 +276,16 @@ impl StreamSource for YtDlpSource {
         let height = pref.max_height.unwrap_or(1080);
         let cache_key = format!("{}:{}", id.0, height);
 
-        // 1. Instant cache hit: skip yt-dlp entirely if extracted within the last 4 hours
+        // 1. Instant cache hit: skip yt-dlp entirely if extracted within the
+        // last 4 hours AND the stream URL has not expired (with safety margin).
+        // An expired cached entry is evicted instead of being handed to mpv,
+        // which would otherwise retry a dead 403 URL forever.
         {
             let mut cache = self.stream_cache.lock().unwrap();
             if let Some((media, fetched_at)) = cache.get(&cache_key) {
-                if fetched_at.elapsed() < Duration::from_secs(14400) {
+                if fetched_at.elapsed() < Duration::from_secs(14400)
+                    && !is_expired(media, EXPIRY_SAFETY_MARGIN_SECS)
+                {
                     return Ok(media.clone());
                 } else {
                     cache.remove(&cache_key);
@@ -288,11 +319,15 @@ impl StreamSource for YtDlpSource {
             .map_err(|e| SourceError::Parse(format!("Invalid playable response JSON: {e}")))?;
         let media = parse_playable_media(&json, id)?;
 
-        // Cache the extracted media
-        self.stream_cache
-            .lock()
-            .unwrap()
-            .insert(cache_key, (media.clone(), Instant::now()));
+        // Cache the extracted media only if it carries a usable expiry.
+        // An entry without one could outlive its (unknown) URL lifetime and
+        // be served to mpv as a dead 403 link.
+        if !is_expired(&media, EXPIRY_SAFETY_MARGIN_SECS) {
+            self.stream_cache
+                .lock()
+                .unwrap()
+                .insert(cache_key, (media.clone(), Instant::now()));
+        }
 
         Ok(media)
     }
@@ -301,11 +336,33 @@ impl StreamSource for YtDlpSource {
         Capabilities {
             can_search: true,
             can_stream_dash: true,
-            can_stream_audio_only: false,
+            can_stream_audio_only: true,
             supports_chapters: false,
             supports_subtitles: false,
         }
     }
+}
+
+/// Parse the `expire=` query parameter of a googlevideo stream URL.
+/// Returns the expiry as a unix timestamp, or `None` if absent/unparseable.
+fn expire_from_url(url: &str) -> Option<i64> {
+    let rest = url.split("expire=").nth(1)?;
+    let value = rest.split('&').next()?;
+    value.parse::<i64>().ok()
+}
+
+/// True when the media's stream URL is already expired, or will expire
+/// within `margin_secs`. A media entry with no expiry (`0`) is treated as
+/// expired: its URL lifetime is unknown, so it must be re-resolved.
+fn is_expired(media: &PlayableMedia, margin_secs: u64) -> bool {
+    if media.expiry_timestamp == 0 {
+        return true;
+    }
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    now.saturating_add(margin_secs) >= media.expiry_timestamp
 }
 
 fn extraction_error(stderr: &[u8]) -> SourceError {
@@ -383,12 +440,23 @@ fn parse_playable_media(
         .or_else(|| json.get("height").and_then(|value| value.as_u64()))
         .and_then(|height| u32::try_from(height).ok());
 
+    // Stream URLs die at their `expire=` timestamp. Take the earliest of
+    // the video/audio pair — the media is only usable while both are alive.
+    // `0` means no expiry could be read (unknown lifetime; callers treat
+    // that as expired so the entry is never served from cache).
+    let expiry_timestamp = [video_url, audio_url]
+        .iter()
+        .filter_map(|url| expire_from_url(url))
+        .min()
+        .unwrap_or(0)
+        .max(0) as u64;
+
     Ok(PlayableMedia {
         video_id: id.clone(),
         video_url: Some(video_url.to_string()),
         audio_url: audio_url.to_string(),
         video_height,
-        expiry_timestamp: 0,
+        expiry_timestamp,
         headers: vec![],
     })
 }
@@ -490,6 +558,69 @@ mod tests {
         assert_eq!(media.video_url.as_deref(), Some("https://video"));
         assert_eq!(media.audio_url, "https://audio");
         assert_eq!(media.video_height, Some(1080));
+    }
+
+    #[test]
+    fn expire_from_url_parses_googlevideo_timestamp() {
+        assert_eq!(
+            expire_from_url("https://rr1---sn-abc.googlevideo.com/videoplayback?expire=1700021600&ei=xyz"),
+            Some(1_700_021_600)
+        );
+        assert_eq!(expire_from_url("https://example.com/no-expire"), None);
+        assert_eq!(expire_from_url("https://example.com/?expire=notanumber"), None);
+    }
+
+    #[test]
+    fn playable_media_expiry_uses_earliest_of_pair() {
+        let json = serde_json::json!({
+            "requested_formats": [
+                { "url": "https://video?expire=1700021600", "vcodec": "avc1", "acodec": "none", "height": 720 },
+                { "url": "https://audio?expire=1700018000", "vcodec": "none", "acodec": "opus" }
+            ]
+        });
+        let media = parse_playable_media(&json, &VideoId("video-id".into())).unwrap();
+        assert_eq!(media.expiry_timestamp, 1_700_018_000);
+    }
+
+    #[test]
+    fn playable_media_without_expiry_reports_zero() {
+        let json = serde_json::json!({
+            "requested_formats": [
+                { "url": "https://video", "vcodec": "avc1", "acodec": "none", "height": 720 },
+                { "url": "https://audio", "vcodec": "none", "acodec": "opus" }
+            ]
+        });
+        let media = parse_playable_media(&json, &VideoId("video-id".into())).unwrap();
+        assert_eq!(media.expiry_timestamp, 0);
+    }
+
+    #[test]
+    fn is_expired_treats_missing_expiry_and_near_expiry_as_expired() {
+        let no_expiry = PlayableMedia {
+            video_id: VideoId("id".into()),
+            video_url: Some("https://video".into()),
+            audio_url: "https://audio".into(),
+            video_height: None,
+            expiry_timestamp: 0,
+            headers: vec![],
+        };
+        assert!(is_expired(&no_expiry, EXPIRY_SAFETY_MARGIN_SECS));
+
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+        let far_future = PlayableMedia {
+            expiry_timestamp: now + 3600,
+            ..no_expiry.clone()
+        };
+        assert!(!is_expired(&far_future, EXPIRY_SAFETY_MARGIN_SECS));
+
+        let about_to_expire = PlayableMedia {
+            expiry_timestamp: now + 60,
+            ..no_expiry
+        };
+        assert!(is_expired(&about_to_expire, EXPIRY_SAFETY_MARGIN_SECS));
     }
 
     #[test]

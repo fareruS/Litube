@@ -89,6 +89,10 @@ struct AppState {
     player: Mutex<Option<VideoPlayer>>,
     source: Arc<dyn StreamSource>,
     store: Arc<Store>,
+    /// Last resolved (video_url, audio_url) pair, so the audio-only toggle
+    /// can reload the audio stream as the main file from the same position
+    /// instead of only flipping `vid=no` (which still downloads video).
+    current_media: Mutex<Option<(String, String)>>,
     #[cfg(windows)]
     child_hwnd: Mutex<Option<isize>>,
 }
@@ -211,7 +215,27 @@ fn player_toggle_audio_only(state: State<AppState>) -> Result<bool, String> {
     if let Some(player) = state.player.lock().unwrap().as_ref() {
         let current = player.is_audio_only();
         let next = !current;
-        player.set_audio_only(next).map_err(|e| e.to_string())?;
+        let position = player.get_position();
+        let start = if position > 0.0 {
+            Some(position)
+        } else {
+            None
+        };
+        if let Some((video_url, audio_url)) = state.current_media.lock().unwrap().clone() {
+            if next {
+                // True audio-only: load the audio stream as the main file.
+                player
+                    .load_audio_only(&audio_url, start)
+                    .map_err(|e| e.to_string())?;
+            } else {
+                player
+                    .load_video_and_audio(&video_url, &audio_url, start)
+                    .map_err(|e| e.to_string())?;
+            }
+        } else {
+            // No media loaded yet: fall back to the vid toggle.
+            player.set_audio_only(next).map_err(|e| e.to_string())?;
+        }
         Ok(next)
     } else {
         Err("Player not initialized".into())
@@ -331,6 +355,8 @@ async fn play_youtube_id(
         player
             .load_video_and_audio(video_url, audio_url, resolved_start)
             .map_err(|e| e.to_string())?;
+        *state.current_media.lock().unwrap() =
+            Some((video_url.to_string(), audio_url.to_string()));
         Ok(video_height)
     } else {
         Err("Player not initialized".into())
@@ -695,6 +721,7 @@ fn main() {
             player: Mutex::new(None),
             source,
             store,
+            current_media: Mutex::new(None),
             #[cfg(windows)]
             child_hwnd: Mutex::new(None),
         })

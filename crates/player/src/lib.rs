@@ -1,11 +1,11 @@
 use std::sync::{Arc, Mutex};
 use thiserror::Error;
 
-const DEMUXER_MAX_BYTES: i64 = 64 * 1024 * 1024;
-const DEMUXER_MAX_BACK_BYTES: i64 = 16 * 1024 * 1024;
-const DEMUXER_READAHEAD_SECS: f64 = 120.0;
-const CACHE_SECS: f64 = 120.0;
-const CACHE_PAUSE_WAIT: f64 = 6.0;
+const DEMUXER_MAX_BYTES: i64 = 128 * 1024 * 1024;
+const DEMUXER_MAX_BACK_BYTES: i64 = 64 * 1024 * 1024;
+const DEMUXER_READAHEAD_SECS: f64 = 60.0;
+const CACHE_SECS: f64 = 30.0;
+const CACHE_PAUSE_WAIT: f64 = 0.5;
 
 #[derive(Error, Debug)]
 pub enum PlayerError {
@@ -63,8 +63,11 @@ impl VideoPlayer {
             "http-header-fields",
             "Origin: https://www.youtube.com,Referer: https://www.youtube.com/,Sec-Fetch-Mode: cors,Sec-Fetch-Dest: empty",
         );
-        let _ = mpv.set_property("stream-lavf-o", "reconnect_streamed=1,reconnect=1,reconnect_on_http_error=4xx,5xx,reconnect_delay_max=2");
-        let _ = mpv.set_property("network-timeout", 20 as i64);
+        // Only retry on server errors (5xx). A 4xx (e.g. 403 from an expired
+        // stream URL) must NOT be retried — the URL is dead and needs a
+        // re-resolve instead of an endless reconnect loop.
+        let _ = mpv.set_property("stream-lavf-o", "reconnect_streamed=1,reconnect=1,reconnect_on_http_error=5xx,reconnect_max_retries=6,reconnect_delay_max=2,reconnect_delay_total_max=30");
+        let _ = mpv.set_property("network-timeout", 10 as i64);
 
         // Logging to temp directory for troubleshooting
         let log_path = std::env::temp_dir().join("litube_mpv.log");
@@ -123,6 +126,9 @@ impl VideoPlayer {
         // 1. Unpause so newly loaded media plays immediately
         let _ = mpv.set_property("pause", false);
 
+        // Restore the video track (undoes a previous audio-only load).
+        let _ = mpv.set_property("vid", "auto");
+
         // 2. Set start offset for seamless seek on load (avoids race condition with async demuxer)
         if let Some(pos) = start_time {
             if pos > 0.0 {
@@ -145,6 +151,41 @@ impl VideoPlayer {
         // 4. Load the main video stream with explicit replace mode
         mpv.command("loadfile", &[video_url, "replace"])
             .map_err(|e| PlayerError::Command(format!("loadfile video failed: {e}")))?;
+
+        Ok(())
+    }
+
+    /// Load only the audio stream as the main file (true audio-only: the
+    /// video stream is never downloaded). `vid=no` alone only disables
+    /// decoding — the video bytes would still be fetched.
+    pub fn load_audio_only(
+        &self,
+        audio_url: &str,
+        start_time: Option<f64>,
+    ) -> Result<(), PlayerError> {
+        let mpv = self.mpv.lock().unwrap();
+
+        let _ = mpv.set_property("pause", false);
+
+        if let Some(pos) = start_time {
+            if pos > 0.0 {
+                let _ = mpv.set_property("start", format!("{:.2}", pos));
+            } else {
+                let _ = mpv.set_property("start", "none");
+            }
+        } else {
+            let _ = mpv.set_property("start", "none");
+        }
+
+        // Detach any previously attached audio file and restore video track.
+        let _ = mpv.set_property("audio-files", "");
+        let _ = mpv.set_property("vid", "auto");
+
+        mpv.command("loadfile", &[audio_url, "replace"])
+            .map_err(|e| PlayerError::Command(format!("loadfile audio failed: {e}")))?;
+
+        // Mark the mode so is_audio_only() stays truthful for the toggle.
+        let _ = mpv.set_property("vid", "no");
 
         Ok(())
     }
@@ -263,8 +304,24 @@ fn configure_buffering(mpv: &libmpv2::Mpv) -> Result<(), PlayerError> {
         .map_err(|e| PlayerError::SetProperty(format!("Failed to set cache-pause: {e}")))?;
     mpv.set_property("cache-pause-wait", CACHE_PAUSE_WAIT)
         .map_err(|e| PlayerError::SetProperty(format!("Failed to set cache-pause-wait: {e}")))?;
-    mpv.set_property("cache-pause-initial", "yes")
+    // Do NOT wait for the cache to fill before starting playback: with
+    // cache-secs=120 + cache-pause-initial=yes, start on a slow connection
+    // felt like a total stall. Playback starts immediately and rebuffers
+    // only if the demuxer actually underruns.
+    mpv.set_property("cache-pause-initial", "no")
         .map_err(|e| PlayerError::SetProperty(format!("Failed to set cache-pause-initial: {e}")))?;
+
+    // Disk cache: already-downloaded data survives seeks and quality
+    // switches (loadfile replace) instead of being re-downloaded.
+    let cache_dir = std::env::var("LOCALAPPDATA")
+        .map(|appdata| std::path::PathBuf::from(appdata).join("Litube").join("cache"))
+        .unwrap_or_else(|_| std::env::temp_dir().join("Litube").join("cache"));
+    if std::fs::create_dir_all(&cache_dir).is_ok() {
+        if let Some(cache_dir_str) = cache_dir.to_str() {
+            let _ = mpv.set_property("cache-on-disk", "yes");
+            let _ = mpv.set_property("demuxer-cache-dir", cache_dir_str);
+        }
+    }
     Ok(())
 }
 
@@ -282,11 +339,15 @@ mod tests {
         let readahead_secs: f64 = mpv.get_property("demuxer-readahead-secs").unwrap();
         let cache_secs: f64 = mpv.get_property("cache-secs").unwrap();
         let pause_wait: f64 = mpv.get_property("cache-pause-wait").unwrap();
+        let pause_initial: bool = mpv.get_property("cache-pause-initial").unwrap();
+        let cache_on_disk: bool = mpv.get_property("cache-on-disk").unwrap_or(false);
 
         assert_eq!(max_bytes, DEMUXER_MAX_BYTES);
         assert_eq!(max_back_bytes, DEMUXER_MAX_BACK_BYTES);
         assert_eq!(readahead_secs, DEMUXER_READAHEAD_SECS);
         assert_eq!(cache_secs, CACHE_SECS);
         assert_eq!(pause_wait, CACHE_PAUSE_WAIT);
+        assert!(!pause_initial, "playback must start without waiting for cache fill");
+        assert!(cache_on_disk, "disk cache must be enabled");
     }
 }
