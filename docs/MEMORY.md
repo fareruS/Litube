@@ -3,7 +3,7 @@
 ## Target Architecture Specifications
 - **Framework:** Tauri 2 (WebView2 on Windows)
 - **Engine:** libmpv2 attached directly to a native Win32 child HWND (`WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_DISABLED`)
-- **DirectX Swapchain:** Direct D3D11 hardware swapchain presentation (`vo=gpu`, `hwdec=auto-safe`, `scale=bilinear`)
+- **DirectX Swapchain:** Direct D3D11 hardware swapchain presentation (`vo=gpu`, `hwdec=auto-safe`, `scale=ewa_lanczos`)
 - **Storage:** SQLite 3 with Write-Ahead Logging (`PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL;`)
 - **Extraction:** Decoupled `yt-source` (`yt-dlp`) with isolated search vs. playback queues and background execution (`CREATE_NO_WINDOW`)
 

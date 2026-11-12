@@ -73,6 +73,8 @@ pub struct PlayableMedia {
     pub video_id: VideoId,
     pub video_url: Option<String>,
     pub audio_url: String,
+    #[serde(default)]
+    pub video_height: Option<u32>,
     pub expiry_timestamp: u64,
     pub headers: Vec<(String, String)>,
 }

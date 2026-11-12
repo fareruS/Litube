@@ -21,7 +21,7 @@ async fn test_ytdlp_capabilities_and_search() {
 
     let page = source
         .search(&SearchQuery {
-            term: "big buck bunny".into(),
+            term: "music".into(),
             page_token: None,
         })
         .await
@@ -31,6 +31,27 @@ async fn test_ytdlp_capabilities_and_search() {
     let first = &page.items[0];
     assert!(!first.id.0.is_empty(), "Video ID must not be empty");
     assert!(!first.title.is_empty(), "Title must not be empty");
+
+    let next_page_token = page
+        .next_page_token
+        .expect("Full page should expose a next token");
+    let next_page = source
+        .search(&SearchQuery {
+            term: "music".into(),
+            page_token: Some(next_page_token),
+        })
+        .await
+        .expect("Next search page should succeed");
+    assert!(
+        !next_page.items.is_empty(),
+        "Next search page should return items"
+    );
+    assert!(
+        page.items
+            .iter()
+            .all(|item| !next_page.items.iter().any(|next| next.id == item.id)),
+        "Pages should not repeat videos"
+    );
 }
 
 #[tokio::test]
@@ -38,7 +59,7 @@ async fn test_ytdlp_capabilities_and_search() {
 async fn test_ytdlp_playable_resolution() {
     let source = YtDlpSource::auto_detect();
     let pref = QualityPref {
-        max_height: Some(720),
+        max_height: Some(1080),
         audio_only: false,
     };
 
@@ -56,6 +77,13 @@ async fn test_ytdlp_playable_resolution() {
         media.audio_url.starts_with("http"),
         "Audio URL must be valid HTTP"
     );
+    assert!(
+        media
+            .video_height
+            .is_some_and(|height| height > 0 && height <= 1080),
+        "Selected video height should be reported and respect the 1080p cap"
+    );
+    eprintln!("yt-dlp selected {}p", media.video_height.unwrap());
 }
 
 #[tokio::test]

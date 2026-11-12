@@ -17,6 +17,8 @@ pub struct YtDlpSource {
 }
 
 impl YtDlpSource {
+    const PAGE_SIZE: u32 = 15;
+
     pub fn new<P: Into<PathBuf>>(binary_path: P) -> Self {
         Self {
             binary_path: binary_path.into(),
@@ -118,78 +120,64 @@ impl YtDlpSource {
 #[async_trait]
 impl StreamSource for YtDlpSource {
     async fn search(&self, q: &SearchQuery) -> Result<Page<VideoCard>, SourceError> {
-        let query_arg = format!("ytsearch15:{}", q.term);
+        let (start, end) = page_bounds(q.page_token.as_deref())?;
+        let query_arg = format!("ytsearch{end}:{}", q.term);
         let mut cmd = self.new_command();
         cmd.args([
             "--dump-single-json",
             "--flat-playlist",
             "--skip-download",
+            "--playlist-items",
+            &format!("{start}:{end}"),
             "--",
             &query_arg,
         ]);
         let output = Self::execute_isolated(&self.search_cancel, cmd).await?;
 
         if !output.status.success() {
-            let err = String::from_utf8_lossy(&output.stderr);
-            return Err(SourceError::ExtractionFailed(err.into_owned()));
+            return Err(extraction_error(&output.stderr));
         }
 
         let json: serde_json::Value = serde_json::from_slice(&output.stdout)
             .map_err(|e| SourceError::Parse(format!("Invalid search response JSON: {e}")))?;
 
-        let mut cards = Vec::new();
-        if let Some(entries) = json.get("entries").and_then(|v| v.as_array()) {
-            for entry in entries {
-                let id = entry.get("id").and_then(|v| v.as_str()).unwrap_or_default();
-                let ie_key = entry.get("ie_key").and_then(|v| v.as_str()).unwrap_or("");
-                if id.is_empty()
-                    || ie_key == "YoutubeTab"
-                    || (id.starts_with("UC") && id.len() >= 24)
-                {
-                    continue;
-                }
-                let title = entry
-                    .get("title")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("Untitled");
-                let channel_id = entry
-                    .get("channel_id")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("");
-                let channel_title = entry
-                    .get("channel")
-                    .or_else(|| entry.get("uploader"))
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("Unknown Channel");
-                let duration_seconds = entry.get("duration").and_then(|v| v.as_u64());
-                let view_count = entry.get("view_count").and_then(|v| v.as_u64());
+        let has_more = page_has_more(&json, Self::PAGE_SIZE);
+        Ok(make_page(parse_video_cards(&json), end, has_more))
+    }
 
-                // Find the best quality thumbnail URL
-                let thumbnail_url = entry
-                    .get("thumbnails")
-                    .and_then(|v| v.as_array())
-                    .and_then(|thumbs| thumbs.last())
-                    .and_then(|t| t.get("url"))
-                    .and_then(|u| u.as_str())
-                    .unwrap_or("")
-                    .to_string();
+    async fn recommendations(
+        &self,
+        page_token: Option<String>,
+    ) -> Result<Page<VideoCard>, SourceError> {
+        let (start, end) = page_bounds(page_token.as_deref())?;
+        let mut cmd = self.new_command();
+        cmd.args([
+            "--dump-single-json",
+            "--flat-playlist",
+            "--skip-download",
+            "--playlist-items",
+            &format!("{start}:{end}"),
+            "--",
+            "https://www.youtube.com/feed/recommended",
+        ]);
+        let output = Self::execute_isolated(&self.search_cancel, cmd).await?;
 
-                cards.push(VideoCard {
-                    id: VideoId(id.to_string()),
-                    title: title.to_string(),
-                    channel_id: ChannelId(channel_id.to_string()),
-                    channel_title: channel_title.to_string(),
-                    duration_seconds,
-                    view_count,
-                    thumbnail_url,
-                });
-            }
+        if !output.status.success() {
+            return Err(extraction_error(&output.stderr));
         }
 
-        Ok(Page {
-            items: cards,
-            next_page_token: None,
-        })
+        let json: serde_json::Value = serde_json::from_slice(&output.stdout).map_err(|e| {
+            SourceError::Parse(format!("Invalid recommendation response JSON: {e}"))
+        })?;
+        let items = parse_video_cards(&json);
+        if items.is_empty() {
+            return Err(SourceError::ExtractionFailed(
+                "YouTube returned no recommendations. Sign in to YouTube and try again.".into(),
+            ));
+        }
+
+        let has_more = page_has_more(&json, Self::PAGE_SIZE);
+        Ok(make_page(items, end, has_more))
     }
 
     async fn video(&self, id: &VideoId) -> Result<VideoDetails, SourceError> {
@@ -274,14 +262,7 @@ impl StreamSource for YtDlpSource {
             }
         }
 
-        // Prioritize format 18 (unthrottled ratebypass single stream) for <=360p; fallback to VP9 WebM and Opus audio
-        let format_filter = if height <= 360 {
-            "18/best[height<=360]/bestvideo[height<=360][vcodec^=vp9]+bestaudio[acodec^=opus]/bestvideo[height<=360]+bestaudio/best".to_string()
-        } else {
-            format!(
-                "bestvideo[height<={height}][vcodec^=vp9]+bestaudio[acodec^=opus]/bestvideo[height<={height}][vcodec^=av01]+bestaudio/bestvideo[height<={height}]+bestaudio/best[height<={height}]/best"
-            )
-        };
+        let format_filter = video_format_filter(height);
 
         let url = format!("https://www.youtube.com/watch?v={}", id.0);
         let mut cmd = self.new_command();
@@ -290,35 +271,22 @@ impl StreamSource for YtDlpSource {
             "--no-warnings",
             "--js-runtimes",
             "node",
-            "--extractor-args",
-            "youtube:player_client=android,web,tv",
             "-f",
             &format_filter,
-            "-g",
+            "--dump-single-json",
+            "--skip-download",
             "--",
             &url,
         ]);
         let output = Self::execute_isolated(&self.stream_cancel, cmd).await?;
 
         if !output.status.success() {
-            let err = String::from_utf8_lossy(&output.stderr);
-            return Err(SourceError::ExtractionFailed(err.into_owned()));
+            return Err(extraction_error(&output.stderr));
         }
 
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        let mut lines = stdout.lines().filter(|l| l.starts_with("http"));
-        let video_url = lines
-            .next()
-            .ok_or_else(|| SourceError::ExtractionFailed("No video URL returned".into()))?;
-        let audio_url = lines.next().unwrap_or(video_url);
-
-        let media = PlayableMedia {
-            video_id: id.clone(),
-            video_url: Some(video_url.to_string()),
-            audio_url: audio_url.to_string(),
-            expiry_timestamp: 0,
-            headers: vec![],
-        };
+        let json: serde_json::Value = serde_json::from_slice(&output.stdout)
+            .map_err(|e| SourceError::Parse(format!("Invalid playable response JSON: {e}")))?;
+        let media = parse_playable_media(&json, id)?;
 
         // Cache the extracted media
         self.stream_cache
@@ -337,5 +305,209 @@ impl StreamSource for YtDlpSource {
             supports_chapters: false,
             supports_subtitles: false,
         }
+    }
+}
+
+fn extraction_error(stderr: &[u8]) -> SourceError {
+    SourceError::ExtractionFailed(String::from_utf8_lossy(stderr).into_owned())
+}
+
+fn page_start(token: Option<&str>) -> Result<u32, SourceError> {
+    let offset = token
+        .map(|value| {
+            value
+                .parse::<u32>()
+                .map_err(|_| SourceError::Parse("Invalid page token".into()))
+        })
+        .transpose()?
+        .unwrap_or(0);
+    if offset % YtDlpSource::PAGE_SIZE != 0 {
+        return Err(SourceError::Parse("Invalid page token".into()));
+    }
+    offset
+        .checked_add(1)
+        .ok_or_else(|| SourceError::Parse("Page token is out of range".into()))
+}
+
+fn page_bounds(token: Option<&str>) -> Result<(u32, u32), SourceError> {
+    let start = page_start(token)?;
+    let end = start
+        .checked_add(YtDlpSource::PAGE_SIZE - 1)
+        .ok_or_else(|| SourceError::Parse("Page token is out of range".into()))?;
+    Ok((start, end))
+}
+
+fn video_format_filter(max_height: u32) -> String {
+    format!("bestvideo[height<={max_height}]+bestaudio/best[height<={max_height}]")
+}
+
+fn parse_playable_media(
+    json: &serde_json::Value,
+    id: &VideoId,
+) -> Result<PlayableMedia, SourceError> {
+    let formats = json
+        .get("requested_formats")
+        .and_then(|value| value.as_array());
+    let video_format = formats.and_then(|formats| {
+        formats.iter().find(|format| {
+            format
+                .get("vcodec")
+                .and_then(|value| value.as_str())
+                .is_some_and(|codec| codec != "none")
+        })
+    });
+    let audio_format = formats.and_then(|formats| {
+        formats.iter().find(|format| {
+            format
+                .get("acodec")
+                .and_then(|value| value.as_str())
+                .is_some_and(|codec| codec != "none")
+        })
+    });
+
+    let video_url = video_format
+        .and_then(|format| format.get("url"))
+        .and_then(|value| value.as_str())
+        .or_else(|| json.get("url").and_then(|value| value.as_str()))
+        .ok_or_else(|| SourceError::ExtractionFailed("No video URL returned".into()))?;
+    let audio_url = audio_format
+        .and_then(|format| format.get("url"))
+        .and_then(|value| value.as_str())
+        .or_else(|| json.get("url").and_then(|value| value.as_str()))
+        .unwrap_or(video_url);
+    let video_height = video_format
+        .and_then(|format| format.get("height"))
+        .and_then(|value| value.as_u64())
+        .or_else(|| json.get("height").and_then(|value| value.as_u64()))
+        .and_then(|height| u32::try_from(height).ok());
+
+    Ok(PlayableMedia {
+        video_id: id.clone(),
+        video_url: Some(video_url.to_string()),
+        audio_url: audio_url.to_string(),
+        video_height,
+        expiry_timestamp: 0,
+        headers: vec![],
+    })
+}
+
+fn page_has_more(json: &serde_json::Value, page_size: u32) -> bool {
+    json.get("entries")
+        .and_then(|value| value.as_array())
+        .is_some_and(|entries| entries.len() as u32 == page_size)
+}
+
+fn make_page(items: Vec<VideoCard>, end: u32, has_more: bool) -> Page<VideoCard> {
+    let next_page_token = has_more.then(|| end.to_string());
+    Page {
+        items,
+        next_page_token,
+    }
+}
+
+fn parse_video_cards(json: &serde_json::Value) -> Vec<VideoCard> {
+    json.get("entries")
+        .and_then(|value| value.as_array())
+        .into_iter()
+        .flatten()
+        .filter_map(|entry| {
+            let id = entry.get("id").and_then(|value| value.as_str())?;
+            let ie_key = entry
+                .get("ie_key")
+                .and_then(|value| value.as_str())
+                .unwrap_or("");
+            if id.is_empty() || ie_key == "YoutubeTab" || (id.starts_with("UC") && id.len() >= 24) {
+                return None;
+            }
+
+            let thumbnail_url = entry
+                .get("thumbnails")
+                .and_then(|value| value.as_array())
+                .and_then(|thumbnails| thumbnails.last())
+                .and_then(|thumbnail| thumbnail.get("url"))
+                .and_then(|url| url.as_str())
+                .unwrap_or("")
+                .to_string();
+            Some(VideoCard {
+                id: VideoId(id.to_string()),
+                title: entry
+                    .get("title")
+                    .and_then(|value| value.as_str())
+                    .unwrap_or("Untitled")
+                    .to_string(),
+                channel_id: ChannelId(
+                    entry
+                        .get("channel_id")
+                        .and_then(|value| value.as_str())
+                        .unwrap_or("")
+                        .to_string(),
+                ),
+                channel_title: entry
+                    .get("channel")
+                    .or_else(|| entry.get("uploader"))
+                    .and_then(|value| value.as_str())
+                    .unwrap_or("Unknown Channel")
+                    .to_string(),
+                duration_seconds: entry.get("duration").and_then(|value| value.as_u64()),
+                view_count: entry.get("view_count").and_then(|value| value.as_u64()),
+                thumbnail_url,
+            })
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn page_tokens_are_offsets_in_multiples_of_page_size() {
+        assert_eq!(page_start(None).unwrap(), 1);
+        assert_eq!(page_start(Some("15")).unwrap(), 16);
+        assert!(page_start(Some("16")).is_err());
+        assert!(page_start(Some("invalid")).is_err());
+    }
+
+    #[test]
+    fn quality_filter_uses_best_available_codec_below_selected_ceiling() {
+        assert_eq!(
+            video_format_filter(1080),
+            "bestvideo[height<=1080]+bestaudio/best[height<=1080]"
+        );
+    }
+
+    #[test]
+    fn selected_format_metadata_reports_actual_video_height() {
+        let json = serde_json::json!({
+            "requested_formats": [
+                { "url": "https://video", "vcodec": "av01", "acodec": "none", "height": 1080 },
+                { "url": "https://audio", "vcodec": "none", "acodec": "opus" }
+            ]
+        });
+        let media = parse_playable_media(&json, &VideoId("video-id".into())).unwrap();
+        assert_eq!(media.video_url.as_deref(), Some("https://video"));
+        assert_eq!(media.audio_url, "https://audio");
+        assert_eq!(media.video_height, Some(1080));
+    }
+
+    #[test]
+    fn full_page_has_next_token_and_short_page_ends() {
+        let card = VideoCard {
+            id: VideoId("id".into()),
+            title: "title".into(),
+            channel_id: ChannelId("channel".into()),
+            channel_title: "channel".into(),
+            duration_seconds: None,
+            view_count: None,
+            thumbnail_url: String::new(),
+        };
+        assert_eq!(
+            make_page(vec![card.clone()], 15, false).next_page_token,
+            None
+        );
+        assert_eq!(
+            make_page(vec![card; 15], 15, true).next_page_token,
+            Some("15".into())
+        );
     }
 }

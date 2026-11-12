@@ -22,10 +22,18 @@ pub enum SourceError {
 #[async_trait]
 pub trait StreamSource: Send + Sync {
     async fn search(&self, q: &SearchQuery) -> Result<Page<VideoCard>, SourceError>;
+    async fn recommendations(
+        &self,
+        page_token: Option<String>,
+    ) -> Result<Page<VideoCard>, SourceError>;
     async fn video(&self, id: &VideoId) -> Result<VideoDetails, SourceError>;
     async fn channel(&self, id: &ChannelId) -> Result<ChannelPage, SourceError>;
-    async fn playlist(&self, id: &PlaylistId, page_token: Option<String>) -> Result<Page<VideoCard>, SourceError>;
-    async fn playable(&self, id: &VideoId, pref: QualityPref) -> Result<PlayableMedia, SourceError>;
+    async fn playlist(
+        &self,
+        id: &PlaylistId,
+        page_token: Option<String>,
+    ) -> Result<Page<VideoCard>, SourceError>;
+    async fn playable(&self, id: &VideoId, pref: QualityPref)
+        -> Result<PlayableMedia, SourceError>;
     fn capabilities(&self) -> Capabilities;
 }
-

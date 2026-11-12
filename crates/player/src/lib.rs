@@ -35,9 +35,9 @@ impl VideoPlayer {
             .map_err(|e| PlayerError::SetProperty(format!("Failed to set vo: {e}")))?;
         mpv.set_property("hwdec", "auto-safe")
             .map_err(|e| PlayerError::SetProperty(format!("Failed to set hwdec: {e}")))?;
-        mpv.set_property("scale", "bilinear")
+        mpv.set_property("scale", "ewa_lanczos")
             .map_err(|e| PlayerError::SetProperty(format!("Failed to set scale: {e}")))?;
-        mpv.set_property("cscale", "bilinear")
+        mpv.set_property("cscale", "ewa_lanczos")
             .map_err(|e| PlayerError::SetProperty(format!("Failed to set cscale: {e}")))?;
         mpv.set_property("vd-lavc-dr", "yes")
             .map_err(|e| PlayerError::SetProperty(format!("Failed to set vd-lavc-dr: {e}")))?;

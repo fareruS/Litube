@@ -64,8 +64,8 @@ fn test_audio_and_start_properties() {
     // Verify start offset as string
     mpv.set_property("start", "42.50").unwrap();
 
-    mpv.set_property("scale", "bilinear").unwrap();
-    mpv.set_property("cscale", "bilinear").unwrap();
+    mpv.set_property("scale", "ewa_lanczos").unwrap();
+    mpv.set_property("cscale", "ewa_lanczos").unwrap();
     mpv.set_property("vd-lavc-dr", "yes").unwrap();
     mpv.set_property("vd-lavc-threads", 2 as i64).unwrap();
 
@@ -139,7 +139,7 @@ fn test_long_playback_stalling_or_stopping() {
             "--js-runtimes",
             "node",
             "-f",
-            "bestvideo[height<=720][vcodec^=vp9]+bestaudio/bestvideo[height<=720]+bestaudio/best",
+            "bestvideo[height<=720]+bestaudio/best[height<=720]",
             "-g",
             "https://www.youtube.com/watch?v=aqz-KE-bpKQ",
         ])

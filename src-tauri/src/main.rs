@@ -235,14 +235,26 @@ fn player_get_volume(state: State<AppState>) -> f64 {
 #[tauri::command]
 async fn search_youtube(
     query: String,
+    page_token: Option<String>,
     state: State<'_, AppState>,
-) -> Result<Vec<VideoCard>, String> {
+) -> Result<yt_model::Page<VideoCard>, String> {
     let q = SearchQuery {
         term: query,
-        page_token: None,
+        page_token,
     };
-    let page = state.source.search(&q).await.map_err(|e| e.to_string())?;
-    Ok(page.items)
+    state.source.search(&q).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn youtube_recommendations(
+    page_token: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<yt_model::Page<VideoCard>, String> {
+    state
+        .source
+        .recommendations(page_token)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -251,7 +263,7 @@ async fn play_youtube_id(
     resolution: Option<String>,
     start_time: Option<f64>,
     state: State<'_, AppState>,
-) -> Result<(), String> {
+) -> Result<Option<u32>, String> {
     let clean_id = video_id.trim();
     if clean_id.is_empty()
         || clean_id.len() > 64
@@ -283,6 +295,7 @@ async fn play_youtube_id(
         .await
         .map_err(|e| e.to_string())?;
 
+    let video_height = media.video_height;
     let video_url = media.video_url.as_deref().unwrap_or(&media.audio_url);
     let audio_url = &media.audio_url;
 
@@ -297,7 +310,7 @@ async fn play_youtube_id(
             other => other,
         };
         player.load_video_and_audio(video_url, audio_url, resolved_start).map_err(|e| e.to_string())?;
-        Ok(())
+        Ok(video_height)
     } else {
         Err("Player not initialized".into())
     }
@@ -646,6 +659,7 @@ fn main() {
             player_toggle_fullscreen,
             play_youtube_id,
             search_youtube,
+            youtube_recommendations,
             store_record_history,
             store_update_resume_pos,
             store_get_history,

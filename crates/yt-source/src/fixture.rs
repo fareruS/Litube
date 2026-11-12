@@ -38,9 +38,20 @@ impl StreamSource for FixtureSource {
         let content = tokio::fs::read_to_string(&file)
             .await
             .map_err(|e| SourceError::Network(e.to_string()))?;
-        let page: Page<VideoCard> = serde_json::from_str(&content)
-            .map_err(|e| SourceError::Parse(e.to_string()))?;
+        let page: Page<VideoCard> =
+            serde_json::from_str(&content).map_err(|e| SourceError::Parse(e.to_string()))?;
         Ok(page)
+    }
+
+    async fn recommendations(
+        &self,
+        page_token: Option<String>,
+    ) -> Result<Page<VideoCard>, SourceError> {
+        self.search(&SearchQuery {
+            term: "recommendations".into(),
+            page_token,
+        })
+        .await
     }
 
     async fn video(&self, id: &VideoId) -> Result<VideoDetails, SourceError> {
@@ -88,6 +99,7 @@ impl StreamSource for FixtureSource {
             video_id: id.clone(),
             video_url: Some("tests/fixtures/sample.mp4".into()),
             audio_url: "tests/fixtures/sample.mp4".into(),
+            video_height: Some(480),
             expiry_timestamp: 4102444800, // Year 2100
             headers: vec![],
         })
@@ -103,4 +115,3 @@ impl StreamSource for FixtureSource {
         }
     }
 }
-

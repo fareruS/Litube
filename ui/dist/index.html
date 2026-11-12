@@ -235,6 +235,14 @@
       gap: 20px;
       align-content: start;
     }
+    .feed-sentinel {
+      grid-column: 1 / -1;
+      min-height: 36px;
+      display: grid;
+      place-items: center;
+      color: var(--text-muted);
+      font-size: 12px;
+    }
 
     .feed-card {
       display: flex;
@@ -1109,7 +1117,7 @@
       <section id="feed-view">
         <!-- Topic Chips -->
         <div class="chips-bar">
-          <button class="chip active" data-topic="trending videos">Trending search</button>
+          <button class="chip active" data-mode="recommendations">For you</button>
           <button class="chip" data-topic="gaming">Gaming</button>
           <button class="chip" data-topic="music">Music</button>
           <button class="chip" data-topic="news">News</button>
@@ -1164,7 +1172,7 @@
 
               <!-- Resolution -->
               <select id="select-res" title="Max Resolution">
-                <option value="auto" selected>Auto</option>
+                <option value="auto" selected>Auto (up to 480p)</option>
                 <option value="1080">1080p</option>
                 <option value="720">720p</option>
                 <option value="480">480p</option>
@@ -1249,7 +1257,7 @@
             <span class="setting-desc">Preferred streaming quality on startup</span>
           </div>
           <select id="setting-default-res" class="input-compact">
-            <option value="auto" selected>Auto (Recommended)</option>
+            <option value="auto" selected>Auto (up to 480p)</option>
             <option value="1080">1080p</option>
             <option value="720">720p</option>
             <option value="480">480p</option>
@@ -1358,9 +1366,16 @@
     let lastRecordedPos = 0;
     let feedItemsCache = [];
     let effectiveHeight = 480;
+    let currentVideoHeight = null;
     let bufferingSince = null;
     let autoDowngradePending = false;
     const AUTO_DOWNGRADE_AFTER_MS = 12000;
+    let feedMode = 'recommendations';
+    let feedQuery = '';
+    let feedNotice = '';
+    let feedNextPageToken = null;
+    let feedRequestId = 0;
+    let feedLoading = false;
 
     // Elements
     const brandLogo = document.getElementById('brand-logo');
@@ -1407,6 +1422,12 @@
     const miniChannel = document.getElementById('mini-channel');
     const miniBtnPause = document.getElementById('mini-btn-pause');
     const miniBtnClose = document.getElementById('mini-btn-close');
+
+    const feedObserver = new IntersectionObserver((entries) => {
+      if (entries.some(entry => entry.isIntersecting)) {
+        loadNextFeedPage();
+      }
+    }, { root: feedView, rootMargin: '320px 0px' });
 
     // PiP Overlay & Account Elements
     const pipOverlayClose = document.getElementById('pip-overlay-close');
@@ -1566,6 +1587,9 @@
       const id = extractVideoId(rawId);
       if (!id) return;
 
+      feedRequestId++;
+      feedLoading = false;
+      feedObserver.disconnect();
       currentVideoId = id;
       currentVideoTitle = title || id;
       currentChannelTitle = channel || 'YouTube';
@@ -1580,7 +1604,11 @@
       isExtracting = true;
       bufferingSince = null;
       const resVal = selectRes.value === 'auto' ? String(effectiveHeight) : selectRes.value;
-      const resLabel = selectRes.value === 'auto' ? `Auto (${effectiveHeight}p)` : `${selectRes.value}p`;
+      const resLabel = currentVideoHeight
+        ? `${currentVideoHeight}p`
+        : selectRes.value === 'auto'
+          ? `up to ${effectiveHeight}p`
+          : `up to ${selectRes.value}p`;
       showVideoLoader(`Extracting stream (${resLabel})...`);
       statusLabel.innerText = `Extracting (${resLabel})...`;
 
@@ -1593,14 +1621,22 @@
       }
 
       try {
-        await invoke('play_youtube_id', {
+        currentVideoHeight = await invoke('play_youtube_id', {
           videoId: id,
           resolution: resVal,
           startTime: startTime,
         });
 
         isExtracting = false;
-        statusLabel.innerText = `Playing (${resLabel})`;
+        if (typeof currentVideoHeight === 'number' && currentVideoHeight > 0) {
+          if (selectRes.value === 'auto') effectiveHeight = currentVideoHeight;
+          statusLabel.innerText = `Playing (${currentVideoHeight}p)`;
+        } else {
+          const maxQuality = selectRes.value === 'auto'
+            ? `${effectiveHeight}p`
+            : `${selectRes.value}p`;
+          statusLabel.innerText = `Playing (up to ${maxQuality})`;
+        }
         btnTogglePause.innerText = 'Pause';
         syncHole();
 
@@ -1630,33 +1666,138 @@
       // Direct ID or URL check
       const directId = extractVideoId(q);
       if (directId && directId.length === 11 && !q.includes(' ') && (q.startsWith('http') || q.length === 11)) {
+        feedRequestId++;
+        feedObserver.disconnect();
         playVideo(directId);
         return;
       }
 
+      feedRequestId++;
+      feedObserver.disconnect();
+      feedMode = 'search';
+      feedQuery = q;
+      feedNotice = '';
+      feedNextPageToken = null;
+      feedLoading = false;
+      feedItemsCache = [];
+      feedGrid.innerHTML = '';
+      feedGrid.appendChild(createFeedSentinel('Searching...'));
       statusLabel.innerText = 'Searching...';
       setView('feed');
-      renderSkeletons(8);
+      loadNextFeedPage();
+    }
 
+    async function performRecommendations() {
+      feedRequestId++;
+      feedObserver.disconnect();
+      feedMode = 'recommendations';
+      feedQuery = '';
+      feedNotice = '';
+      feedNextPageToken = null;
+      feedLoading = false;
+      feedItemsCache = [];
+      feedGrid.innerHTML = '';
+      feedGrid.appendChild(createFeedSentinel('Loading your recommendations...'));
+      setView('feed');
+      statusLabel.innerText = 'Loading recommendations...';
+      const requestId = feedRequestId;
       try {
-        const results = await invoke('search_youtube', { query: q });
-        statusLabel.innerText = 'Ready';
-        if (!results || results.length === 0) {
-          feedGrid.innerHTML = `<div class="empty-state">No videos found for "${escapeHtml(q)}".</div>`;
-          return;
+        const page = await invoke('youtube_recommendations', { pageToken: null });
+        if (requestId !== feedRequestId) return;
+        if (!page || page.items.length === 0) {
+          throw new Error('YouTube did not return recommendations.');
         }
-
-        feedItemsCache = results;
-        renderFeedGrid(results);
+        feedItemsCache = page.items;
+        feedNextPageToken = page.next_page_token;
+        renderFeedGrid(page.items);
+        statusLabel.innerText = 'Recommended for you';
       } catch (err) {
-        statusLabel.innerText = 'Search error';
-        feedGrid.innerHTML = `<div class="empty-state">Search error: ${escapeHtml(err)}</div>`;
+        if (requestId !== feedRequestId) return;
+        statusLabel.innerText = 'Recommendations unavailable; showing trending videos';
+        feedMode = 'search';
+        feedQuery = 'trending videos';
+        feedNotice = 'Personal recommendations were unavailable. Sign in to YouTube to load your account feed.';
+        feedNextPageToken = null;
+        feedItemsCache = [];
+        feedGrid.innerHTML = '';
+        feedGrid.appendChild(createFeedSentinel('Loading trending videos...'));
+        loadNextFeedPage(requestId);
       }
     }
 
+    async function loadNextFeedPage(requestId = feedRequestId) {
+      if (feedLoading || requestId !== feedRequestId) return;
+      if (feedNextPageToken === null && feedItemsCache.length > 0) return;
+      feedLoading = true;
+      const pageToken = feedNextPageToken;
+      updateFeedSentinel('Loading more videos...');
+
+      try {
+        const page = feedMode === 'recommendations'
+          ? await invoke('youtube_recommendations', { pageToken })
+          : await invoke('search_youtube', { query: feedQuery, pageToken });
+        if (requestId !== feedRequestId) return;
+        const isFirstPage = feedItemsCache.length === 0;
+        const seen = new Set(feedItemsCache.map(item => item.id));
+        const newItems = (page?.items || []).filter(item => !seen.has(item.id));
+        feedItemsCache.push(...newItems);
+        feedNextPageToken = page?.next_page_token || null;
+        if (feedItemsCache.length === 0) {
+          feedGrid.innerHTML = '';
+          if (feedNotice) {
+            const notice = document.createElement('div');
+            notice.className = 'feed-sentinel';
+            notice.innerText = feedNotice;
+            feedGrid.appendChild(notice);
+          }
+          const empty = document.createElement('div');
+          empty.className = 'empty-state';
+          empty.innerText = `No videos found for "${feedQuery}".`;
+          feedGrid.appendChild(empty);
+          return;
+        }
+        renderFeedGrid(newItems, !isFirstPage);
+        statusLabel.innerText = feedNotice
+          ? 'Showing trending videos; sign in for your feed'
+          : feedMode === 'recommendations'
+            ? 'Recommended for you'
+            : 'Ready';
+      } catch (err) {
+        if (requestId !== feedRequestId) return;
+        statusLabel.innerText = 'Could not load more videos';
+        updateFeedSentinel(`Could not load more: ${escapeHtml(err)} — scroll to retry`);
+      } finally {
+        if (requestId === feedRequestId) feedLoading = false;
+      }
+    }
+
+    function createFeedSentinel(text) {
+      const sentinel = document.createElement('div');
+      sentinel.id = 'feed-sentinel';
+      sentinel.className = 'feed-sentinel';
+      sentinel.innerText = text;
+      sentinel.addEventListener('click', () => loadNextFeedPage());
+      return sentinel;
+    }
+
+    function updateFeedSentinel(text) {
+      const sentinel = document.getElementById('feed-sentinel');
+      if (sentinel) sentinel.innerText = text;
+    }
+
     // Render Feed Cards
-    function renderFeedGrid(items) {
-      feedGrid.innerHTML = '';
+    function renderFeedGrid(items, append = false) {
+      feedObserver.disconnect();
+      if (!append) {
+        feedGrid.innerHTML = '';
+        if (feedNotice) {
+          const notice = document.createElement('div');
+          notice.className = 'feed-sentinel';
+          notice.innerText = feedNotice;
+          feedGrid.appendChild(notice);
+        }
+      }
+      document.getElementById('feed-sentinel')?.remove();
       items.forEach(item => {
         const id = extractVideoId(item.id);
         if (!id) return;
@@ -1684,6 +1825,11 @@
 
         feedGrid.appendChild(card);
       });
+      if (feedNextPageToken) {
+        const sentinel = createFeedSentinel('Scroll for more videos');
+        feedGrid.appendChild(sentinel);
+        feedObserver.observe(sentinel);
+      }
     }
 
     // Render Side Related Cards
@@ -2016,6 +2162,10 @@
       chip.addEventListener('click', () => {
         document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
         chip.classList.add('active');
+        if (chip.dataset.mode === 'recommendations') {
+          performRecommendations();
+          return;
+        }
         const topic = chip.dataset.topic;
         searchInput.value = topic;
         performSearch(topic);
@@ -2268,7 +2418,7 @@
       setView('feed');
       initSettings();
       refreshAuthStatus();
-      performSearch('trending videos');
+      performRecommendations();
     });
   </script>
 </body>
