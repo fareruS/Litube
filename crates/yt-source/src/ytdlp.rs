@@ -396,7 +396,7 @@ fn page_bounds(token: Option<&str>) -> Result<(u32, u32), SourceError> {
 
 fn video_format_filter(max_height: u32) -> String {
     format!(
-        "bestvideo[height={max_height}][vcodec^=avc1]+bestaudio/best[height={max_height}][vcodec^=avc1]/bestvideo[height<={max_height}][fps<=30]+bestaudio/best[height<={max_height}][fps<=30]/bestvideo[height<={max_height}][vcodec^=avc1]+bestaudio/best[height<={max_height}][vcodec^=avc1]/bestvideo[height<={max_height}]+bestaudio/best[height<={max_height}]"
+        "bestvideo[height={max_height}][vcodec^=avc1]+bestaudio/best[height={max_height}][vcodec^=avc1]/bestvideo[height<={max_height}][vcodec^=avc1]+bestaudio/best[height<={max_height}][vcodec^=avc1]/bestvideo[height<={max_height}][fps<=30]+bestaudio/best[height<={max_height}][fps<=30]/bestvideo[height<={max_height}]+bestaudio/best[height<={max_height}]"
     )
 }
 
@@ -539,11 +539,18 @@ mod tests {
     }
 
     #[test]
-    fn quality_filter_prefers_requested_resolution_and_caps_frame_rate() {
-        assert_eq!(
-            video_format_filter(1080),
-            "bestvideo[height=1080][vcodec^=avc1]+bestaudio/best[height=1080][vcodec^=avc1]/bestvideo[height<=1080][fps<=30]+bestaudio/best[height<=1080][fps<=30]/bestvideo[height<=1080][vcodec^=avc1]+bestaudio/best[height<=1080][vcodec^=avc1]/bestvideo[height<=1080]+bestaudio/best[height<=1080]"
-        );
+    fn quality_filter_prefers_h264_before_other_lower_fps_formats() {
+        let filter = video_format_filter(1080);
+        let requested_h264 = filter.find("bestvideo[height=1080][vcodec^=avc1]").unwrap();
+        let lower_h264 = filter
+            .find("bestvideo[height<=1080][vcodec^=avc1]")
+            .unwrap();
+        let lower_frame_rate = filter.find("bestvideo[height<=1080][fps<=30]").unwrap();
+        let any_codec = filter.find("bestvideo[height<=1080]+bestaudio").unwrap();
+
+        assert!(requested_h264 < lower_h264);
+        assert!(lower_h264 < lower_frame_rate);
+        assert!(lower_frame_rate < any_codec);
     }
 
     #[test]

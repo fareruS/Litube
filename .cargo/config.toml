@@ -1,6 +1,5 @@
-# MinGW linker shipped with the Rust toolchain (self-contained).
-# Uses generic tool names — no user-specific paths, so any machine with
-# the stable-x86_64-pc-windows-gnu toolchain can build this repo.
+# The system MinGW on this machine uses an incompatible CRT; use Rust's
+# bundled GCC linker and the matching target archiver from PATH.
 [target.x86_64-pc-windows-gnu]
-linker = "x86_64-w64-mingw32-gcc"
+linker = "C:\\Users\\Fareru\\.rustup\\toolchains\\stable-x86_64-pc-windows-gnu\\lib\\rustlib\\x86_64-pc-windows-gnu\\bin\\self-contained\\x86_64-w64-mingw32-gcc.exe"
 ar = "x86_64-w64-mingw32-ar"

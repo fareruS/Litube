@@ -32,9 +32,8 @@ cargo build --release
 ```
 
 The Tauri app is built from `src-tauri/` (`cargo tauri build`).
-The `.cargo/config.toml` uses the generic MinGW linker names
-(`x86_64-w64-mingw32-gcc` / `...-ar`) from the Rust MinGW
-self-contained toolchain — no user-specific paths.
+The `.cargo/config.toml` selects the Rust toolchain's self-contained MinGW
+linker to avoid conflicts with incompatible system MinGW installations.
 
 ## Layout
 
