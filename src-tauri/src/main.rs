@@ -1,13 +1,13 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::sync::{Arc, Mutex};
-use tauri::{Manager, State};
 use player::VideoPlayer;
-use yt_source::{StreamSource, YtDlpSource};
-use yt_model::{QualityPref, SearchQuery, VideoCard, VideoId};
+use std::sync::{Arc, Mutex};
 use store::{HistoryItem, Store};
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{TrayIconBuilder, TrayIconEvent};
+use tauri::{Manager, State};
+use yt_model::{QualityPref, SearchQuery, VideoCard, VideoId};
+use yt_source::{StreamSource, YtDlpSource};
 
 #[cfg(windows)]
 fn trim_process_working_set() {
@@ -28,8 +28,8 @@ static PREV_SIZE: Mutex<Option<(f64, f64)>> = Mutex::new(None);
 mod win32_child {
     use windows_sys::Win32::Foundation::HWND;
     use windows_sys::Win32::UI::WindowsAndMessaging::{
-        CreateWindowExW, SetWindowPos, ShowWindow, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE,
-        SW_SHOW, WS_CHILD, WS_CLIPSIBLINGS, WS_DISABLED, WS_VISIBLE,
+        CreateWindowExW, SetWindowPos, ShowWindow, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SW_SHOW,
+        WS_CHILD, WS_CLIPSIBLINGS, WS_DISABLED, WS_VISIBLE,
     };
 
     pub unsafe fn create_child_hwnd(parent: HWND, x: i32, y: i32, w: i32, h: i32) -> HWND {
@@ -100,7 +100,10 @@ fn sync_video_rect(x: i32, y: i32, width: i32, height: i32, state: State<AppStat
         if let Some(hwnd) = *state.child_hwnd.lock().unwrap() {
             unsafe {
                 if width > 0 && height > 0 {
-                    win32_child::show_child_hwnd(hwnd as windows_sys::Win32::Foundation::HWND, true);
+                    win32_child::show_child_hwnd(
+                        hwnd as windows_sys::Win32::Foundation::HWND,
+                        true,
+                    );
                     win32_child::resize_child_hwnd(
                         hwnd as windows_sys::Win32::Foundation::HWND,
                         x,
@@ -109,7 +112,10 @@ fn sync_video_rect(x: i32, y: i32, width: i32, height: i32, state: State<AppStat
                         height,
                     );
                 } else {
-                    win32_child::show_child_hwnd(hwnd as windows_sys::Win32::Foundation::HWND, false);
+                    win32_child::show_child_hwnd(
+                        hwnd as windows_sys::Win32::Foundation::HWND,
+                        false,
+                    );
                 }
             }
         }
@@ -164,7 +170,12 @@ fn player_get_state(state: State<AppState>) -> PlaybackState {
             buffering: player.is_buffering(),
         }
     } else {
-        PlaybackState { position: 0.0, duration: 0.0, paused: false, buffering: false }
+        PlaybackState {
+            position: 0.0,
+            duration: 0.0,
+            paused: false,
+            buffering: false,
+        }
     }
 }
 
@@ -210,7 +221,9 @@ fn player_toggle_audio_only(state: State<AppState>) -> Result<bool, String> {
 #[tauri::command]
 fn player_toggle_fullscreen(window: tauri::WebviewWindow) -> Result<bool, String> {
     let is_fullscreen = window.is_fullscreen().map_err(|e| e.to_string())?;
-    window.set_fullscreen(!is_fullscreen).map_err(|e| e.to_string())?;
+    window
+        .set_fullscreen(!is_fullscreen)
+        .map_err(|e| e.to_string())?;
     Ok(!is_fullscreen)
 }
 
@@ -267,13 +280,15 @@ async fn play_youtube_id(
     let clean_id = video_id.trim();
     if clean_id.is_empty()
         || clean_id.len() > 64
-        || !clean_id.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+        || !clean_id
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
     {
         return Err("Invalid YouTube video ID format".into());
     }
 
     let max_height = match resolution.as_deref() {
-        Some("auto") | None => 480, // Default for auto: 480p gives instant start and zero stutter
+        Some("auto") | None => 1080,
         Some(val) => val.parse::<u32>().unwrap_or(480),
     };
 
@@ -305,11 +320,17 @@ async fn play_youtube_id(
         let resolved_start = match start_time {
             Some(t) if t < 0.0 => {
                 let current = player.get_position();
-                if current > 0.0 { Some(current) } else { None }
+                if current > 0.0 {
+                    Some(current)
+                } else {
+                    None
+                }
             }
             other => other,
         };
-        player.load_video_and_audio(video_url, audio_url, resolved_start).map_err(|e| e.to_string())?;
+        player
+            .load_video_and_audio(video_url, audio_url, resolved_start)
+            .map_err(|e| e.to_string())?;
         Ok(video_height)
     } else {
         Err("Player not initialized".into())
@@ -328,7 +349,14 @@ fn store_record_history(
 ) -> Result<(), String> {
     state
         .store
-        .record_history(&video_id, &title, &channel_title, &thumbnail_url, duration_seconds, resume_pos)
+        .record_history(
+            &video_id,
+            &title,
+            &channel_title,
+            &thumbnail_url,
+            duration_seconds,
+            resume_pos,
+        )
         .map_err(|e| e.to_string())
 }
 
@@ -356,19 +384,15 @@ fn store_get_history(
 }
 
 #[tauri::command]
-fn store_set_setting(
-    key: String,
-    value: String,
-    state: State<'_, AppState>,
-) -> Result<(), String> {
-    state.store.set_setting(&key, &value).map_err(|e| e.to_string())
+fn store_set_setting(key: String, value: String, state: State<'_, AppState>) -> Result<(), String> {
+    state
+        .store
+        .set_setting(&key, &value)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-fn store_get_setting(
-    key: String,
-    state: State<'_, AppState>,
-) -> Result<Option<String>, String> {
+fn store_get_setting(key: String, state: State<'_, AppState>) -> Result<Option<String>, String> {
     state.store.get_setting(&key).map_err(|e| e.to_string())
 }
 
@@ -379,15 +403,18 @@ fn store_add_subscription(
     avatar_url: String,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
-    state.store.add_subscription(&channel_id, &title, &avatar_url).map_err(|e| e.to_string())
+    state
+        .store
+        .add_subscription(&channel_id, &title, &avatar_url)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-fn store_remove_subscription(
-    channel_id: String,
-    state: State<'_, AppState>,
-) -> Result<(), String> {
-    state.store.remove_subscription(&channel_id).map_err(|e| e.to_string())
+fn store_remove_subscription(channel_id: String, state: State<'_, AppState>) -> Result<(), String> {
+    state
+        .store
+        .remove_subscription(&channel_id)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -398,11 +425,11 @@ fn store_get_subscriptions(
 }
 
 #[tauri::command]
-fn store_is_subscribed(
-    channel_id: String,
-    state: State<'_, AppState>,
-) -> Result<bool, String> {
-    state.store.is_subscribed(&channel_id).map_err(|e| e.to_string())
+fn store_is_subscribed(channel_id: String, state: State<'_, AppState>) -> Result<bool, String> {
+    state
+        .store
+        .is_subscribed(&channel_id)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -420,14 +447,23 @@ fn player_toggle_pip(window: tauri::WebviewWindow) -> Result<bool, String> {
         }
         let _ = window.set_always_on_top(true);
         let _ = window.set_decorations(false); // Frameless: no window titlebar in PiP
-        let _ = window.set_size(tauri::Size::Logical(tauri::LogicalSize { width: 420.0, height: 236.0 }));
+        let _ = window.set_size(tauri::Size::Logical(tauri::LogicalSize {
+            width: 420.0,
+            height: 236.0,
+        }));
     } else {
         let _ = window.set_always_on_top(false);
         let _ = window.set_decorations(true); // Restore window decorations
         if let Some((w, h)) = *PREV_SIZE.lock().unwrap() {
-            let _ = window.set_size(tauri::Size::Physical(tauri::PhysicalSize { width: w as u32, height: h as u32 }));
+            let _ = window.set_size(tauri::Size::Physical(tauri::PhysicalSize {
+                width: w as u32,
+                height: h as u32,
+            }));
         } else {
-            let _ = window.set_size(tauri::Size::Logical(tauri::LogicalSize { width: 1000.0, height: 600.0 }));
+            let _ = window.set_size(tauri::Size::Logical(tauri::LogicalSize {
+                width: 1000.0,
+                height: 600.0,
+            }));
         }
     }
 
@@ -437,7 +473,11 @@ fn player_toggle_pip(window: tauri::WebviewWindow) -> Result<bool, String> {
 
 fn get_cookies_path() -> std::path::PathBuf {
     std::env::var("APPDATA")
-        .map(|appdata| std::path::PathBuf::from(appdata).join("Litube").join("cookies.txt"))
+        .map(|appdata| {
+            std::path::PathBuf::from(appdata)
+                .join("Litube")
+                .join("cookies.txt")
+        })
         .unwrap_or_else(|_| std::path::PathBuf::from("cookies.txt"))
 }
 
@@ -450,7 +490,10 @@ struct AuthStatus {
 #[tauri::command]
 fn auth_get_status() -> AuthStatus {
     let path = get_cookies_path();
-    let signed_in = path.exists() && std::fs::metadata(&path).map(|m| m.len() > 10).unwrap_or(false);
+    let signed_in = path.exists()
+        && std::fs::metadata(&path)
+            .map(|m| m.len() > 10)
+            .unwrap_or(false);
     AuthStatus {
         signed_in,
         path: path.to_string_lossy().into_owned(),
@@ -492,7 +535,10 @@ fn export_cookies_to_netscape(cookies: &[CookieData]) -> String {
             format!(".{}", c.domain)
         };
         let secure_str = if c.secure { "TRUE" } else { "FALSE" };
-        out.push_str(&format!("{}\tTRUE\t{}\t{}\t2147483647\t{}\t{}\n", domain_str, c.path, secure_str, c.name, c.value));
+        out.push_str(&format!(
+            "{}\tTRUE\t{}\t{}\t2147483647\t{}\t{}\n",
+            domain_str, c.path, secure_str, c.name, c.value
+        ));
     }
     out
 }
@@ -596,19 +642,23 @@ async fn auth_open_login_window(app: tauri::AppHandle) -> Result<(), String> {
     let url = tauri::Url::parse("https://accounts.google.com/ServiceLogin?service=youtube&continue=https://www.youtube.com/")
         .map_err(|e| e.to_string())?;
 
-    let builder = tauri::WebviewWindowBuilder::new(&app, "google_login", tauri::WebviewUrl::External(url))
-        .title("Sign in to YouTube - Google Accounts")
-        .inner_size(540.0, 720.0)
-        .center()
-        .on_page_load(move |_w, payload| {
-            if matches!(payload.event(), tauri::webview::PageLoadEvent::Finished) {
-                if let Some(host) = payload.url().host_str() {
-                    if host == "www.youtube.com" || host == "youtube.com" || host == "m.youtube.com" {
-                        let _ = tx.send(());
+    let builder =
+        tauri::WebviewWindowBuilder::new(&app, "google_login", tauri::WebviewUrl::External(url))
+            .title("Sign in to YouTube - Google Accounts")
+            .inner_size(540.0, 720.0)
+            .center()
+            .on_page_load(move |_w, payload| {
+                if matches!(payload.event(), tauri::webview::PageLoadEvent::Finished) {
+                    if let Some(host) = payload.url().host_str() {
+                        if host == "www.youtube.com"
+                            || host == "youtube.com"
+                            || host == "m.youtube.com"
+                        {
+                            let _ = tx.send(());
+                        }
                     }
                 }
-            }
-        });
+            });
 
     let win = builder.build().map_err(|e| e.to_string())?;
     let _ = win.show();
@@ -633,7 +683,10 @@ fn main() {
     let _ = std::fs::create_dir_all(&db_path);
     let db_file = db_path.join("litube.db");
     let store = Arc::new(Store::open(&db_file).unwrap_or_else(|e| {
-        eprintln!("[Litube] Failed to open SQLite DB at {:?}: {e}, falling back to memory", db_file);
+        eprintln!(
+            "[Litube] Failed to open SQLite DB at {:?}: {e}, falling back to memory",
+            db_file
+        );
         Store::open(":memory:").expect("in-memory db")
     }));
 
@@ -693,7 +746,10 @@ fn main() {
                     {
                         if let Some(hwnd) = *state.child_hwnd.lock().unwrap() {
                             unsafe {
-                                win32_child::show_child_hwnd(hwnd as windows_sys::Win32::Foundation::HWND, false);
+                                win32_child::show_child_hwnd(
+                                    hwnd as windows_sys::Win32::Foundation::HWND,
+                                    false,
+                                );
                             }
                         }
                     }
@@ -724,34 +780,32 @@ fn main() {
             let _tray = TrayIconBuilder::new()
                 .menu(&menu)
                 .show_menu_on_left_click(false)
-                .on_menu_event(move |app, event| {
-                    match event.id.as_ref() {
-                        "show" => {
-                            if let Some(w) = app.get_webview_window("main") {
-                                let _ = w.show();
-                                let _ = w.set_focus();
-                            }
+                .on_menu_event(move |app, event| match event.id.as_ref() {
+                    "show" => {
+                        if let Some(w) = app.get_webview_window("main") {
+                            let _ = w.show();
+                            let _ = w.set_focus();
                         }
-                        "play_pause" => {
-                            let state = app.state::<AppState>();
-                            let guard = state.player.lock().unwrap();
-                            if let Some(player) = guard.as_ref() {
-                                let _ = player.toggle_pause();
-                            }
-                        }
-                        "mute" => {
-                            let state = app.state::<AppState>();
-                            let guard = state.player.lock().unwrap();
-                            if let Some(player) = guard.as_ref() {
-                                let cur = player.get_volume();
-                                let _ = player.set_volume(if cur > 0.0 { 0.0 } else { 100.0 });
-                            }
-                        }
-                        "quit" => {
-                            app.exit(0);
-                        }
-                        _ => {}
                     }
+                    "play_pause" => {
+                        let state = app.state::<AppState>();
+                        let guard = state.player.lock().unwrap();
+                        if let Some(player) = guard.as_ref() {
+                            let _ = player.toggle_pause();
+                        }
+                    }
+                    "mute" => {
+                        let state = app.state::<AppState>();
+                        let guard = state.player.lock().unwrap();
+                        if let Some(player) = guard.as_ref() {
+                            let cur = player.get_volume();
+                            let _ = player.set_volume(if cur > 0.0 { 0.0 } else { 100.0 });
+                        }
+                    }
+                    "quit" => {
+                        app.exit(0);
+                    }
+                    _ => {}
                 })
                 .on_tray_icon_event(|tray, event| {
                     if let TrayIconEvent::Click { .. } = event {
@@ -788,7 +842,10 @@ fn main() {
                     match VideoPlayer::new_with_hwnd(child as isize) {
                         Ok(player) => {
                             *state.player.lock().unwrap() = Some(player);
-                            println!("[Litube Spike] libmpv successfully anchored to HWND: {:?}", child);
+                            println!(
+                                "[Litube Spike] libmpv successfully anchored to HWND: {:?}",
+                                child
+                            );
                         }
                         Err(e) => {
                             eprintln!("[Litube Spike] Error initializing libmpv on HWND: {e}");

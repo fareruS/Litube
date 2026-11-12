@@ -8,7 +8,7 @@
 - **Direct Hardware Surface Decoding:** `vd-lavc-dr=yes` (decodes directly to D3D11 swapchain surface, eliminating system RAM frame buffer copies), `vd-lavc-threads=2`, `scale=ewa_lanczos`, `cscale=ewa_lanczos` for sharper scaling than bilinear.
 - **WebView2 Subsystem Trimming:** `--renderer-process-limit=1`, `--js-flags=--max-old-space-size=64`, `--process-per-site`, disabling unused browser features.
 - **Network Resilience:** `stream-lavf-o=reconnect_streamed=1,reconnect=1,reconnect_delay_max=2` and `network-timeout=20` request reconnection after network errors.
-- **Format Selection:** Selects yt-dlp's best available video/audio formats under the chosen height ceiling. The UI reports the selected video height; `Auto` currently starts with a 480p ceiling and can fall back to 360p after sustained buffering.
+- **Format Selection:** Prefers H.264 at the selected resolution, then formats at 30 fps or lower, then other H.264 streams before using higher-frame-rate formats. Adaptive quality starts at up to 1080p and steps down one tier after eight seconds of continuous buffering; the UI reports the selected video height and each change. Network bandwidth still determines whether 1080p can play without a quality drop.
 - **Internal ytdl Disabled:** `ytdl=no` (Stream resolution handled strictly out-of-process via Rust `yt-dlp` sidecar)
 
 ## 2. DASH Audio & Video Synchronization

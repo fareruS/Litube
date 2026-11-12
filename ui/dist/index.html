@@ -5,15 +5,18 @@
   <title>Litube - Desktop YouTube Client</title>
   <style>
     :root {
-      --bg-base: #0f0f10;
-      --bg-surface: #18181b;
-      --bg-surface-hover: #222226;
-      --border-subtle: #27272a;
-      --border-focus: #3b82f6;
-      --text-main: #f4f4f5;
-      --text-muted: #a1a1aa;
-      --accent-red: #ef4444;
-      --accent-blue: #3b82f6;
+      color-scheme: dark;
+      --bg-base: #11100f;
+      --bg-surface: #191816;
+      --bg-surface-hover: #25221f;
+      --border-subtle: #302c27;
+      --border-focus: #d99b72;
+      --text-main: #f4f0e9;
+      --text-muted: #b8aea1;
+      --color-accent: #d99b72;
+      --accent-ink: #21150f;
+      --surface-raised: #201e1a;
+      --text-subtle: #a79d91;
     }
 
     * {
@@ -23,13 +26,15 @@
     }
 
     html, body {
-      width: 100vw;
-      height: 100vh;
+      width: 100%;
+      height: 100%;
+      min-height: 100%;
       background: var(--bg-base);
       color: var(--text-main);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       overflow: hidden;
-      user-select: none;
+      user-select: text;
+      line-height: 1.5;
     }
 
     .app-root {
@@ -68,7 +73,7 @@
       cursor: pointer;
     }
     .brand-accent {
-      color: var(--accent-red);
+      color: var(--color-accent);
     }
 
     .nav-tabs {
@@ -144,7 +149,7 @@
       background: #3f3f46;
     }
     .btn.primary {
-      background: var(--accent-red);
+      background: var(--color-accent);
       border-color: #dc2626;
       font-weight: 600;
     }
@@ -152,7 +157,7 @@
       background: #dc2626;
     }
     .btn.active {
-      background: var(--accent-blue);
+      background: var(--color-accent);
       border-color: #2563eb;
     }
 
@@ -408,7 +413,7 @@
       width: 48px;
       height: 48px;
       border: 3.5px solid rgba(255, 255, 255, 0.12);
-      border-top-color: var(--accent-red);
+      border-top-color: var(--color-accent);
       border-radius: 50%;
       animation: spin 0.75s linear infinite;
     }
@@ -477,7 +482,7 @@
       width: 12px;
       height: 12px;
       border-radius: 50%;
-      background: var(--accent-red);
+      background: var(--color-accent);
       cursor: pointer;
     }
 
@@ -561,7 +566,7 @@
     }
     .tab-btn.active {
       color: var(--text-main);
-      border-bottom-color: var(--accent-red);
+      border-bottom-color: var(--color-accent);
     }
 
     .sidebar-content {
@@ -574,6 +579,11 @@
     }
 
     .side-card {
+      width: 100%;
+      border: 0;
+      color: inherit;
+      text-align: start;
+      font: inherit;
       display: flex;
       gap: 10px;
       padding: 8px;
@@ -757,7 +767,7 @@
       transition: all 0.15s ease;
     }
     .drop-zone:hover, .drop-zone.dragover {
-      border-color: var(--accent-blue);
+      border-color: var(--color-accent);
       background: rgba(59, 130, 246, 0.04);
     }
     .drop-zone-text {
@@ -1078,8 +1088,811 @@
       background: rgba(255, 255, 255, 0.2);
     }
     .mini-btn.close:hover {
-      background: var(--accent-red);
+      background: var(--color-accent);
       color: #fff;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    body {
+      background:
+        radial-gradient(ellipse at 50% -30%, rgba(166, 112, 78, 0.12), transparent 58%),
+        var(--bg-base);
+    }
+
+    .header-bar {
+      height: auto;
+      min-height: 72px;
+      gap: 18px;
+      padding: 12px 24px;
+      background: rgba(25, 24, 22, 0.96);
+      border-color: rgba(255, 255, 255, 0.06);
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
+    }
+
+    .brand-group {
+      gap: 20px;
+      flex-shrink: 0;
+    }
+
+    .brand {
+      min-height: 44px;
+      gap: 9px;
+      padding: 2px 6px 2px 0;
+      border: 0;
+      background: transparent;
+      color: var(--text-main);
+      font: inherit;
+      letter-spacing: -0.5px;
+    }
+
+    .brand-mark {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border-radius: 12px;
+      background: var(--color-accent);
+      color: var(--accent-ink);
+      font-size: 19px;
+      font-weight: 800;
+      box-shadow: inset 0 1px rgba(255, 255, 255, 0.3);
+    }
+
+    .brand-accent {
+      color: var(--text-main);
+      font-size: 18px;
+      font-weight: 750;
+      letter-spacing: -0.7px;
+    }
+
+    .nav-tabs {
+      gap: 5px;
+      padding: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.055);
+      border-radius: 14px;
+      background: rgba(0, 0, 0, 0.16);
+    }
+
+    .nav-btn {
+      min-height: 38px;
+      height: auto;
+      padding: 0 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 550;
+      transition: color 0.15s, background-color 0.15s;
+    }
+
+    .nav-btn.active {
+      color: var(--text-main);
+      background: var(--bg-surface-hover);
+      border-color: rgba(255, 255, 255, 0.06);
+    }
+
+    .search-container {
+      max-width: 640px;
+      min-width: 180px;
+      margin: 0 auto;
+      gap: 8px;
+    }
+
+    .search-input {
+      min-width: 0;
+      height: 42px;
+      padding-inline: 16px;
+      border-color: rgba(255, 255, 255, 0.075);
+      border-radius: 13px;
+      background: #11100f;
+      font-size: 14px;
+      transition: border-color 0.15s, background-color 0.15s;
+    }
+
+    .search-input:focus {
+      border-color: var(--border-focus);
+      background: #151310;
+    }
+
+    .btn {
+      min-height: 40px;
+      height: auto;
+      padding: 0 14px;
+      border-color: rgba(255, 255, 255, 0.09);
+      border-radius: 11px;
+      background: var(--surface-raised);
+      font-size: 13px;
+      font-weight: 550;
+      transition: color 0.15s, background-color 0.15s, border-color 0.15s, scale 0.15s;
+    }
+
+    .btn:hover {
+      background: #2b2823;
+      border-color: rgba(255, 255, 255, 0.16);
+    }
+
+    .btn.primary {
+      color: var(--accent-ink);
+      background: var(--color-accent);
+      border-color: var(--color-accent);
+    }
+
+    .btn.primary:hover {
+      background: #e4ad85;
+      border-color: #e4ad85;
+    }
+
+    .btn.active {
+      background: var(--color-accent);
+      border-color: var(--color-accent);
+      color: var(--accent-ink);
+    }
+
+    .header-right {
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .header-status {
+      max-width: 180px;
+      min-width: 0;
+      font-size: 12px;
+      text-align: end;
+      line-height: 1.35;
+    }
+
+    .views-wrapper {
+      min-height: 0;
+    }
+
+    #feed-view {
+      background:
+        radial-gradient(ellipse at 50% 0%, rgba(116, 78, 54, 0.08), transparent 40%),
+        var(--bg-base);
+      scrollbar-color: #51473c transparent;
+      scrollbar-width: thin;
+    }
+
+    .feed-intro {
+      min-height: 178px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      padding: 28px clamp(22px, 5vw, 72px) 20px;
+      overflow: hidden;
+    }
+
+    .feed-intro-copy {
+      max-width: 680px;
+      min-width: 0;
+    }
+
+    .feed-eyebrow {
+      margin-bottom: 8px;
+      color: #d7a985;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.4px;
+    }
+
+    .feed-intro h1 {
+      color: var(--text-main);
+      font-size: clamp(26px, 3.2vw, 38px);
+      font-weight: 700;
+      line-height: 1.12;
+      letter-spacing: -1.1px;
+      text-wrap: balance;
+    }
+
+    #feed-description {
+      margin-top: 9px;
+      color: var(--text-muted);
+      font-size: 14px;
+      line-height: 1.5;
+      text-wrap: pretty;
+    }
+
+    .feed-intro-art {
+      position: relative;
+      width: 176px;
+      height: 126px;
+      flex: 0 0 176px;
+      display: grid;
+      place-items: center;
+      color: #f0c4a0;
+    }
+
+    .intro-orbit {
+      position: absolute;
+      width: 116px;
+      height: 116px;
+      border: 1px solid rgba(217, 155, 114, 0.25);
+      border-radius: 50%;
+      box-shadow: 0 0 48px rgba(198, 129, 83, 0.12), inset 0 0 32px rgba(198, 129, 83, 0.06);
+    }
+
+    .intro-play {
+      position: relative;
+      width: 58px;
+      height: 58px;
+      display: grid;
+      place-items: center;
+      padding-inline-start: 4px;
+      border: 1px solid rgba(255, 230, 208, 0.25);
+      border-radius: 20px;
+      background: linear-gradient(145deg, #e5b18c, #be7954);
+      color: #241710;
+      font-size: 21px;
+      box-shadow: 0 14px 36px rgba(161, 98, 60, 0.22), inset 0 1px rgba(255, 255, 255, 0.32);
+    }
+
+    .intro-spark {
+      position: absolute;
+      color: #e7b891;
+    }
+
+    .intro-spark-one {
+      top: 16px;
+      right: 28px;
+      font-size: 18px;
+    }
+
+    .intro-spark-two {
+      bottom: 17px;
+      left: 21px;
+      font-size: 16px;
+    }
+
+    .chips-bar {
+      position: sticky;
+      top: 0;
+      z-index: 15;
+      gap: 9px;
+      padding: 12px clamp(22px, 5vw, 72px);
+      border-block: 1px solid rgba(255, 255, 255, 0.045);
+      background: rgba(17, 16, 15, 0.9);
+      backdrop-filter: blur(16px);
+      scrollbar-width: none;
+    }
+
+    .chips-bar::-webkit-scrollbar {
+      display: none;
+    }
+
+    .chip {
+      min-height: 38px;
+      height: auto;
+      padding: 0 15px;
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 999px;
+      background: #201e1a;
+      color: var(--text-muted);
+      font-size: 13px;
+      transition: color 0.15s, background-color 0.15s, border-color 0.15s;
+    }
+
+    .chip:hover {
+      background: #2a2722;
+      border-color: rgba(255, 255, 255, 0.13);
+    }
+
+    .chip.active {
+      border-color: #e3b18d;
+      background: #e3b18d;
+      color: #25180f;
+    }
+
+    .feed-grid {
+      width: min(100%, 1600px);
+      margin-inline: auto;
+      padding: 25px clamp(16px, 4.3vw, 64px) 48px;
+      grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr));
+      gap: 22px 18px;
+      align-content: start;
+    }
+
+    .feed-card {
+      width: 100%;
+      min-width: 0;
+      padding: 8px;
+      border: 1px solid transparent;
+      border-radius: 18px;
+      color: inherit;
+      text-align: start;
+      font: inherit;
+      transition: background-color 0.15s, border-color 0.15s, scale 0.15s;
+    }
+
+    .feed-card:hover {
+      transform: none;
+      border-color: rgba(255, 255, 255, 0.07);
+      background: #1b1916;
+    }
+
+    .feed-card:active,
+    .btn:active {
+      scale: 0.98;
+    }
+
+    .feed-thumb-wrap {
+      border-radius: 12px;
+      background: #201e1a;
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.18);
+    }
+
+    .feed-thumb,
+    .side-thumb,
+    .mini-thumb {
+      outline: 1px solid rgba(255, 255, 255, 0.1);
+      outline-offset: -1px;
+    }
+
+    .feed-title {
+      font-size: 14px;
+      font-weight: 600;
+      line-height: 1.45;
+      text-wrap: pretty;
+    }
+
+    .feed-channel {
+      margin-top: 2px;
+      color: #c1b6a9;
+      font-size: 12.5px;
+    }
+
+    .feed-meta {
+      color: var(--text-subtle);
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .feed-sentinel {
+      min-height: 44px;
+      padding: 8px 16px;
+      border: 0;
+      border-radius: 12px;
+      background: transparent;
+      color: var(--text-muted);
+      font: inherit;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .feed-sentinel:hover {
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-main);
+    }
+
+    .empty-state {
+      grid-column: 1 / -1;
+      max-width: 560px;
+      margin: 20px auto;
+      padding: 28px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 18px;
+      background: rgba(25, 24, 22, 0.8);
+      color: var(--text-muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .skeleton-thumb,
+    .skeleton-line {
+      background: #201e1a;
+    }
+
+    .skeleton-card {
+      padding: 8px;
+    }
+
+    .video-details-bar,
+    .controls-panel,
+    .sidebar {
+      background: #191816;
+      border-color: rgba(255, 255, 255, 0.07);
+    }
+
+    .active-video-title {
+      font-size: 15px;
+      line-height: 1.4;
+    }
+
+    .sidebar {
+      width: min(340px, 32vw);
+    }
+
+    .modal-overlay {
+      padding: 16px;
+      overscroll-behavior: contain;
+    }
+
+    .modal-card {
+      width: min(480px, 100%);
+      max-height: min(88vh, 760px);
+      overflow-y: auto;
+      padding: 24px;
+      border-color: rgba(255, 255, 255, 0.08);
+      border-radius: 18px;
+      background: #1b1916;
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+    }
+
+    .modal-header {
+      border-color: rgba(255, 255, 255, 0.07);
+    }
+
+    .modal-header h2 {
+      font-size: 18px;
+      line-height: 1.2;
+      text-wrap: balance;
+    }
+
+    .mini-return {
+      min-width: 0;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      text-align: start;
+      cursor: pointer;
+    }
+
+    .mini-return:focus-visible {
+      border-radius: 10px;
+    }
+
+    .miniplayer-bar {
+      width: min(390px, calc(100vw - 32px));
+      min-height: 76px;
+      height: auto;
+      right: 20px;
+      bottom: 20px;
+      padding: 10px 12px;
+      border-color: rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      background: rgba(30, 28, 25, 0.96);
+    }
+
+    .mini-btn {
+      width: 40px;
+      height: 40px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      transition: color 0.15s, background-color 0.15s;
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+      font: inherit;
+    }
+
+    button,
+    input,
+    select,
+    textarea,
+    [role="button"] {
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    :focus-visible {
+      outline: 2px solid var(--border-focus);
+      outline-offset: 3px;
+    }
+
+    .search-input:focus-visible,
+    select:focus-visible,
+    input[type="range"]:focus-visible {
+      outline: 2px solid var(--border-focus);
+      outline-offset: 3px;
+    }
+
+    .feed-card:focus-visible {
+      outline-offset: 1px;
+      border-color: var(--border-focus);
+    }
+
+    .seek-slider,
+    .volume-slider {
+      height: 8px;
+      touch-action: pan-x;
+    }
+
+    .seek-slider::-webkit-slider-thumb {
+      width: 16px;
+      height: 16px;
+    }
+
+    .volume-slider::-webkit-slider-thumb {
+      width: 14px;
+      height: 14px;
+    }
+
+    .drop-zone:focus-within {
+      outline: 2px solid var(--border-focus);
+      outline-offset: 3px;
+    }
+
+    [data-tauri-drag-region] {
+      user-select: none;
+    }
+
+    .spinner,
+    .skeleton-thumb::after,
+    .skeleton-line::after {
+      animation: none;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .spinner {
+        animation: spin 0.85s linear infinite;
+      }
+
+      .skeleton-thumb::after,
+      .skeleton-line::after {
+        animation: shimmer 1.5s ease-in-out infinite;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+    @media (max-width: 1000px) {
+      .header-bar {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 8px 16px;
+      }
+
+      .search-container {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        width: 100%;
+        max-width: none;
+        margin: 0;
+      }
+
+      .header-right {
+        grid-column: 2;
+        grid-row: 1;
+      }
+
+      .sidebar {
+        display: none;
+      }
+
+      .feed-intro {
+        min-height: 158px;
+      }
+    }
+
+    @media (max-width: 620px) {
+      .header-bar {
+        padding: 10px 14px;
+        gap: 8px;
+      }
+
+      .brand-group {
+        gap: 8px;
+      }
+
+      .brand {
+        gap: 7px;
+      }
+
+      .brand-mark {
+        width: 30px;
+        height: 30px;
+        border-radius: 10px;
+      }
+
+      .brand-accent {
+        font-size: 16px;
+      }
+
+      .nav-tabs {
+        gap: 2px;
+        padding: 3px;
+      }
+
+      .nav-btn {
+        min-height: 36px;
+        padding: 0 9px;
+        font-size: 12px;
+      }
+
+      .header-right {
+        gap: 6px;
+      }
+
+      .header-status {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+
+      .header-right .btn {
+        min-height: 38px;
+        padding: 0 10px;
+        font-size: 12px;
+      }
+
+      .search-container {
+        gap: 6px;
+      }
+
+      .search-input {
+        height: 40px;
+        padding-inline: 12px;
+        font-size: 14px;
+      }
+
+      .feed-intro {
+        min-height: 136px;
+        padding: 22px 20px 16px;
+      }
+
+      .feed-intro h1 {
+        font-size: 27px;
+      }
+
+      #feed-description {
+        max-width: 38ch;
+        font-size: 13px;
+      }
+
+      .feed-intro-art {
+        width: 76px;
+        height: 76px;
+        flex-basis: 76px;
+        opacity: 0.8;
+      }
+
+      .intro-orbit {
+        width: 72px;
+        height: 72px;
+      }
+
+      .intro-play {
+        width: 42px;
+        height: 42px;
+        border-radius: 15px;
+        font-size: 16px;
+      }
+
+      .intro-spark-one {
+        top: 0;
+        right: 0;
+      }
+
+      .intro-spark-two {
+        bottom: 0;
+        left: 0;
+      }
+
+      .chips-bar {
+        gap: 7px;
+        padding: 10px 16px;
+      }
+
+      .chip {
+        min-height: 36px;
+        padding: 0 13px;
+      }
+
+      .feed-grid {
+        padding: 16px 12px 36px;
+        grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+        gap: 12px 8px;
+      }
+
+      .feed-card {
+        padding: 6px;
+        border-radius: 14px;
+      }
+
+      .feed-thumb-wrap {
+        border-radius: 10px;
+      }
+
+      .actions-row {
+        gap: 6px;
+      }
+
+      .actions-row .spacer {
+        display: none;
+      }
+
+      .controls-panel {
+        padding: 8px 10px;
+      }
+
+      .video-details-bar {
+        padding: 10px 12px;
+      }
+
+      .miniplayer-bar {
+        right: 12px;
+        bottom: 12px;
+      }
+    }
+
+    @media (max-width: 390px) {
+      .header-bar {
+        grid-template-columns: 1fr;
+      }
+
+      .brand-group,
+      .header-right {
+        grid-column: 1;
+        grid-row: auto;
+        justify-content: space-between;
+      }
+
+      .search-container {
+        grid-column: 1;
+        grid-row: auto;
+      }
+
+      .feed-intro-art {
+        display: none;
+      }
+
+      .feed-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .modal-card {
+        padding: 18px;
+      }
+    }
+
+    @media (max-height: 560px) {
+      .header-bar {
+        min-height: 56px;
+        padding-block: 6px;
+      }
+
+      .feed-intro {
+        min-height: 118px;
+        padding-block: 16px 10px;
+      }
+
+      .feed-intro-art {
+        height: 84px;
+      }
+
+      .controls-panel {
+        padding-block: 6px;
+        gap: 5px;
+      }
     }
   </style>
 </head>
@@ -1088,46 +1901,60 @@
     <!-- Header -->
     <header class="header-bar">
       <div class="brand-group">
-        <div id="brand-logo" class="brand" title="Return to Feed">
-          <span class="brand-accent">Litube</span>
-          <span style="font-size:12px; color:var(--text-muted); font-weight:400;">Desktop</span>
-        </div>
+        <button id="brand-logo" class="brand" type="button" aria-label="Litube home">
+          <span class="brand-mark" aria-hidden="true">L</span>
+          <span class="brand-accent">litube</span>
+        </button>
 
-        <nav class="nav-tabs">
-          <button id="btn-nav-feed" class="nav-btn active">Feed</button>
-          <button id="btn-nav-watch" class="nav-btn">Watch</button>
+        <nav class="nav-tabs" aria-label="Main navigation">
+          <button id="btn-nav-feed" class="nav-btn active" type="button">Explore</button>
+          <button id="btn-nav-watch" class="nav-btn" type="button">Now playing</button>
         </nav>
       </div>
 
       <div class="search-container">
-        <input type="text" id="search-input" class="search-input" placeholder="Search YouTube or paste URL / video ID..." />
-        <button id="btn-search" class="btn">Search</button>
+        <label class="sr-only" for="search-input">Search videos or paste a YouTube link</label>
+        <input type="search" id="search-input" class="search-input" name="video-search" autocomplete="off" placeholder="Search videos, creators, or paste a link" />
+        <button id="btn-search" class="btn" type="button">Search</button>
       </div>
 
       <div class="header-right">
-        <div id="status-label" class="header-status">Ready</div>
-        <button id="btn-open-account" class="btn" style="height:30px; padding:0 10px;">Sign In</button>
-        <button id="btn-open-settings" class="btn" style="height:30px; padding:0 10px;">Settings</button>
+        <div id="status-label" class="header-status" role="status" aria-live="polite" aria-atomic="true">Ready when you are</div>
+        <button id="btn-open-account" class="btn" type="button">Sign in</button>
+        <button id="btn-open-settings" class="btn" type="button" aria-label="Open settings">Settings</button>
       </div>
     </header>
 
     <!-- Views -->
-    <div class="views-wrapper">
+    <main class="views-wrapper">
       <!-- 1. Feed & Search Results View -->
       <section id="feed-view">
-        <!-- Topic Chips -->
-        <div class="chips-bar">
-          <button class="chip active" data-mode="recommendations">For you</button>
-          <button class="chip" data-topic="gaming">Gaming</button>
-          <button class="chip" data-topic="music">Music</button>
-          <button class="chip" data-topic="news">News</button>
-          <button class="chip" data-topic="tech">Tech</button>
-          <button class="chip" data-topic="lofi chill">Lo-Fi</button>
-          <button class="chip" data-topic="podcast">Podcasts</button>
+        <div class="feed-intro">
+          <div class="feed-intro-copy">
+            <p class="feed-eyebrow">A GOOD PLACE TO START</p>
+            <h1 id="feed-heading">Find something you’ll love</h1>
+            <p id="feed-description">A fresh mix of videos, ready when you are.</p>
+          </div>
+          <div class="feed-intro-art" aria-hidden="true">
+            <span class="intro-orbit"></span>
+            <span class="intro-play">▶</span>
+            <span class="intro-spark intro-spark-one">✦</span>
+            <span class="intro-spark intro-spark-two">✧</span>
+          </div>
         </div>
+        <!-- Topic Chips -->
+        <nav class="chips-bar" aria-label="Browse by topic">
+          <button class="chip active" type="button" data-mode="recommendations">For you</button>
+          <button class="chip" type="button" data-topic="gaming">Gaming</button>
+          <button class="chip" type="button" data-topic="music">Music</button>
+          <button class="chip" type="button" data-topic="news">News</button>
+          <button class="chip" type="button" data-topic="tech">Tech</button>
+          <button class="chip" type="button" data-topic="lofi chill">Lo-fi</button>
+          <button class="chip" type="button" data-topic="podcast">Podcasts</button>
+        </nav>
 
         <!-- Video Cards Grid -->
-        <div id="feed-grid" class="feed-grid"></div>
+        <div id="feed-grid" class="feed-grid" role="region" aria-labelledby="feed-heading" aria-busy="false"></div>
       </section>
 
       <!-- 2. Watch Player View -->
@@ -1158,21 +1985,22 @@
             <!-- Seek row -->
             <div class="seek-row">
               <span id="time-current">0:00</span>
-              <input type="range" id="seek-slider" class="seek-slider" min="0" max="100" value="0" />
+              <input type="range" id="seek-slider" class="seek-slider" aria-label="Seek through video" min="0" max="100" value="0" />
               <span id="time-duration">0:00</span>
             </div>
 
             <!-- Actions row -->
             <div class="actions-row">
-              <button id="btn-back-to-feed" class="btn">Back to Feed</button>
-              <button id="btn-toggle-pause" class="btn primary">Pause</button>
-              <button id="btn-stop" class="btn">Stop</button>
-              <button id="btn-seek-back" class="btn">-10s</button>
-              <button id="btn-seek-fwd" class="btn">+10s</button>
+              <button id="btn-back-to-feed" class="btn" type="button">Back to explore</button>
+              <button id="btn-toggle-pause" class="btn primary" type="button">Pause</button>
+              <button id="btn-stop" class="btn" type="button">Stop</button>
+              <button id="btn-seek-back" class="btn" type="button" aria-label="Go back 10 seconds">−10s</button>
+              <button id="btn-seek-fwd" class="btn" type="button" aria-label="Go forward 10 seconds">+10s</button>
 
               <!-- Resolution -->
-              <select id="select-res" title="Max Resolution">
-                <option value="auto" selected>Auto (up to 480p)</option>
+              <label class="sr-only" for="select-res">Video quality</label>
+              <select id="select-res" title="Maximum video quality">
+                <option value="auto" selected>Auto · up to 1080p</option>
                 <option value="1080">1080p</option>
                 <option value="720">720p</option>
                 <option value="480">480p</option>
@@ -1180,7 +2008,8 @@
               </select>
 
               <!-- Speed -->
-              <select id="select-speed" title="Playback Speed">
+              <label class="sr-only" for="select-speed">Playback speed</label>
+              <select id="select-speed" title="Playback speed">
                 <option value="0.5">0.5x</option>
                 <option value="0.75">0.75x</option>
                 <option value="1.0" selected>1.0x</option>
@@ -1191,16 +2020,16 @@
 
               <!-- Volume -->
               <div class="volume-box">
-                <span>Vol</span>
-                <input type="range" id="vol-slider" class="volume-slider" min="0" max="100" value="100" />
+                <span aria-hidden="true">Vol</span>
+                <input type="range" id="vol-slider" class="volume-slider" aria-label="Volume" min="0" max="100" value="100" />
                 <span id="vol-text">100%</span>
               </div>
 
               <div class="spacer"></div>
 
-              <button id="btn-audio-only" class="btn">Audio Only</button>
-              <button id="btn-pip" class="btn">PIP</button>
-              <button id="btn-fullscreen" class="btn">Fullscreen</button>
+              <button id="btn-audio-only" class="btn" type="button">Audio only</button>
+              <button id="btn-pip" class="btn" type="button">Mini player</button>
+              <button id="btn-fullscreen" class="btn" type="button">Full screen</button>
             </div>
           </div>
         </div>
@@ -1208,8 +2037,8 @@
         <!-- Sidebar in Watch View -->
         <aside class="sidebar">
           <div class="sidebar-tabs">
-            <button id="tab-related-btn" class="tab-btn active">More results</button>
-            <button id="tab-history-btn" class="tab-btn">History</button>
+            <button id="tab-related-btn" class="tab-btn active" type="button">More results</button>
+            <button id="tab-history-btn" class="tab-btn" type="button">History</button>
           </div>
 
           <div id="side-content" class="sidebar-content">
@@ -1217,47 +2046,49 @@
           </div>
         </aside>
       </section>
-    </div>
+    </main>
   </div>
 
   <!-- Docked Miniplayer Bar (Feed Mode) -->
-  <div id="miniplayer-bar" class="miniplayer-bar" title="Click to return to video">
-    <div class="mini-thumb-box">
-      <img id="mini-thumb" class="mini-thumb" src="" onerror="this.style.opacity='0.2'" />
-      <div class="mini-play-icon">▶</div>
-    </div>
-    <div class="mini-meta">
-      <div id="mini-title" class="mini-title">Video Title</div>
-      <div id="mini-channel" class="mini-channel">Channel Name</div>
-    </div>
+  <div id="miniplayer-bar" class="miniplayer-bar" role="group" aria-label="Mini player">
+    <button id="mini-return" class="mini-return" type="button" aria-label="Return to the playing video">
+      <span class="mini-thumb-box">
+        <img id="mini-thumb" class="mini-thumb" src="" alt="" onerror="this.style.opacity='0.2'" />
+        <span class="mini-play-icon" aria-hidden="true">▶</span>
+      </span>
+      <span class="mini-meta">
+        <span id="mini-title" class="mini-title">Video Title</span>
+        <span id="mini-channel" class="mini-channel">Channel Name</span>
+      </span>
+    </button>
     <div class="mini-controls" onclick="event.stopPropagation()">
-      <button id="mini-btn-pause" class="mini-btn" title="Pause / Resume">⏸</button>
-      <button id="mini-btn-close" class="mini-btn close" title="Close and stop playback">✕</button>
+      <button id="mini-btn-pause" class="mini-btn" type="button" aria-label="Pause or resume playback">⏸</button>
+      <button id="mini-btn-close" class="mini-btn close" type="button" aria-label="Close and stop playback">✕</button>
     </div>
   </div>
 
   <!-- Settings Modal Dialog -->
-  <div id="settings-modal" class="modal-overlay">
+  <div id="settings-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="settings-title" aria-hidden="true">
     <div class="modal-card">
       <div class="modal-header">
-        <span>Settings</span>
-        <button id="btn-close-settings" class="btn" style="height:26px; padding:0 8px;">Done</button>
+        <h2 id="settings-title">Settings</h2>
+        <button id="btn-close-settings" class="btn" type="button">Done</button>
       </div>
       <div class="modal-body">
         <div class="setting-item">
           <div class="setting-label-box">
-            <span class="setting-title">Minimize to Tray on Close</span>
+            <label class="setting-title" for="setting-close-tray">Minimize to tray on close</label>
             <span class="setting-desc">Keep audio playing in system tray when window is closed</span>
           </div>
           <input type="checkbox" id="setting-close-tray" style="width:18px; height:18px; cursor:pointer;" />
         </div>
         <div class="setting-item">
           <div class="setting-label-box">
-            <span class="setting-title">Default Resolution</span>
-            <span class="setting-desc">Preferred streaming quality on startup</span>
+            <label class="setting-title" for="setting-default-res">Default video quality</label>
+            <span class="setting-desc">Maximum quality; Litube steps down if the stream keeps buffering.</span>
           </div>
           <select id="setting-default-res" class="input-compact">
-            <option value="auto" selected>Auto (up to 480p)</option>
+            <option value="auto" selected>Auto · up to 1080p</option>
             <option value="1080">1080p</option>
             <option value="720">720p</option>
             <option value="480">480p</option>
@@ -1269,11 +2100,11 @@
   </div>
 
   <!-- Account & Sign In Modal Dialog -->
-  <div id="account-modal" class="modal-overlay">
+  <div id="account-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="account-title" aria-hidden="true">
     <div class="modal-card account-card">
       <div class="modal-header">
-        <span>YouTube Account</span>
-        <button id="btn-close-account" class="btn" style="height:26px; padding:0 8px;">Done</button>
+        <h2 id="account-title">YouTube account</h2>
+        <button id="btn-close-account" class="btn" type="button">Done</button>
       </div>
       <div class="modal-body">
         <div class="account-status-card">
@@ -1324,17 +2155,18 @@
             </div>
           </div>
 
-          <div id="cookie-drop-zone" class="drop-zone">
-            <input type="file" id="input-cookie-file" accept=".txt" style="display:none;" />
+          <label id="cookie-drop-zone" class="drop-zone" for="input-cookie-file">
+            <input type="file" id="input-cookie-file" class="sr-only" accept=".txt" aria-describedby="cookie-file-name" />
             <div class="drop-zone-text">Drop cookies.txt here or click to browse</div>
             <div id="cookie-file-name" class="drop-zone-sub">Supports standard Netscape / yt-dlp cookie format</div>
-          </div>
+          </label>
 
           <div style="text-align:center;">
             <button id="btn-toggle-paste" class="btn-toggle-paste" type="button">Or paste cookies text manually</button>
           </div>
 
           <div id="cookie-paste-container" style="display:none; margin-top:8px;">
+            <label class="setting-title" for="cookie-paste-area">Cookies text</label>
             <textarea id="cookie-paste-area" class="input-compact" style="width:100%; height:75px; resize:vertical; font-family:monospace; font-size:11px; padding:6px;" placeholder="# Netscape HTTP Cookie File..."></textarea>
             <button id="btn-save-cookies" class="btn" style="margin-top:8px; width:100%;">Save Cookies</button>
           </div>
@@ -1365,11 +2197,12 @@
     let fullscreenInactivityTimer = null;
     let lastRecordedPos = 0;
     let feedItemsCache = [];
-    let effectiveHeight = 480;
+    let effectiveHeight = 1080;
     let currentVideoHeight = null;
     let bufferingSince = null;
     let autoDowngradePending = false;
-    const AUTO_DOWNGRADE_AFTER_MS = 12000;
+    const AUTO_DOWNGRADE_AFTER_MS = 8000;
+    let modalReturnFocus = null;
     let feedMode = 'recommendations';
     let feedQuery = '';
     let feedNotice = '';
@@ -1384,6 +2217,8 @@
     const feedView = document.getElementById('feed-view');
     const watchView = document.getElementById('watch-view');
     const feedGrid = document.getElementById('feed-grid');
+    const feedHeading = document.getElementById('feed-heading');
+    const feedDescription = document.getElementById('feed-description');
     const hole = document.getElementById('video-hole');
     const videoLoader = document.getElementById('video-loader');
     const loaderText = document.getElementById('loader-text');
@@ -1418,6 +2253,7 @@
     const settingDefaultRes = document.getElementById('setting-default-res');
     const miniplayerBar = document.getElementById('miniplayer-bar');
     const miniThumb = document.getElementById('mini-thumb');
+    const miniReturn = document.getElementById('mini-return');
     const miniTitle = document.getElementById('mini-title');
     const miniChannel = document.getElementById('mini-channel');
     const miniBtnPause = document.getElementById('mini-btn-pause');
@@ -1540,7 +2376,15 @@
     // Modal Management (with native Win32 child HWND visibility handling)
     function openModal(modal) {
       if (!modal) return;
+      if (!document.querySelector('.modal-overlay.active')) {
+        modalReturnFocus = document.activeElement;
+        document.querySelector('.app-root').inert = true;
+      }
       modal.classList.add('active');
+      modal.setAttribute('aria-hidden', 'false');
+      const firstControl = modal.querySelector('button, input, select, textarea, [tabindex]:not([tabindex="-1"])');
+      firstControl?.focus();
+      modal.addEventListener('keydown', trapModalFocus);
       if (currentView === 'watch') {
         invoke('player_set_visible', { visible: false });
       }
@@ -1549,19 +2393,46 @@
     function closeModal(modal) {
       if (!modal) return;
       modal.classList.remove('active');
+      modal.setAttribute('aria-hidden', 'true');
+      modal.removeEventListener('keydown', trapModalFocus);
       const anyOpen = document.querySelector('.modal-overlay.active');
       if (!anyOpen && currentView === 'watch') {
         invoke('player_set_visible', { visible: true });
         setTimeout(syncHole, 50);
+      }
+      if (!anyOpen) {
+        document.querySelector('.app-root').inert = false;
+        modalReturnFocus?.focus();
+        modalReturnFocus = null;
+      }
+    }
+
+    function trapModalFocus(event) {
+      if (event.key !== 'Tab') return;
+      const modal = event.currentTarget;
+      const controls = Array.from(modal.querySelectorAll(
+        'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])'
+      )).filter(control => control.getClientRects().length > 0);
+      if (controls.length === 0) return;
+      const first = controls[0];
+      const last = controls[controls.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
       }
     }
 
     // Skeleton Cards Generator
     function renderSkeletons(count = 8) {
       feedGrid.innerHTML = '';
+      feedGrid.setAttribute('aria-busy', 'true');
       for (let i = 0; i < count; i++) {
         const card = document.createElement('div');
         card.className = 'skeleton-card';
+        card.setAttribute('aria-hidden', 'true');
         card.innerHTML = `
           <div class="skeleton-thumb"></div>
           <div class="skeleton-line"></div>
@@ -1582,6 +2453,16 @@
       videoLoader.classList.remove('active');
     }
 
+    function selectedResolutionCap() {
+      if (selectRes.value === 'auto') return 1080;
+      const height = Number.parseInt(selectRes.value, 10);
+      return Number.isFinite(height) ? height : 480;
+    }
+
+    function nextLowerResolution(height) {
+      return [720, 480, 360].find(candidate => candidate < height) || null;
+    }
+
     // Video Playback
     async function playVideo(rawId, title = '', channel = '', thumb = '', startTime = null) {
       const id = extractVideoId(rawId);
@@ -1594,8 +2475,10 @@
       currentVideoTitle = title || id;
       currentChannelTitle = channel || 'YouTube';
       currentThumbnailUrl = thumb || '';
-      if (selectRes.value === 'auto' && startTime !== -1.0) {
-        effectiveHeight = 480;
+      if (startTime !== -1.0) {
+        effectiveHeight = selectedResolutionCap();
+        bufferingSince = null;
+        autoDowngradePending = false;
       }
       activeTitle.innerText = currentVideoTitle;
       activeChannel.innerText = currentChannelTitle;
@@ -1603,12 +2486,9 @@
       setView('watch');
       isExtracting = true;
       bufferingSince = null;
-      const resVal = selectRes.value === 'auto' ? String(effectiveHeight) : selectRes.value;
-      const resLabel = currentVideoHeight
-        ? `${currentVideoHeight}p`
-        : selectRes.value === 'auto'
-          ? `up to ${effectiveHeight}p`
-          : `up to ${selectRes.value}p`;
+      currentVideoHeight = null;
+      const resVal = String(effectiveHeight);
+      const resLabel = `up to ${effectiveHeight}p`;
       showVideoLoader(`Extracting stream (${resLabel})...`);
       statusLabel.innerText = `Extracting (${resLabel})...`;
 
@@ -1629,13 +2509,13 @@
 
         isExtracting = false;
         if (typeof currentVideoHeight === 'number' && currentVideoHeight > 0) {
-          if (selectRes.value === 'auto') effectiveHeight = currentVideoHeight;
-          statusLabel.innerText = `Playing (${currentVideoHeight}p)`;
+          if (selectRes.value === 'auto') effectiveHeight = Math.min(effectiveHeight, currentVideoHeight);
+          const preferredHeight = selectedResolutionCap();
+          statusLabel.innerText = effectiveHeight < preferredHeight
+            ? `Playing at ${currentVideoHeight}p · adjusted for a steadier stream`
+            : `Playing at ${currentVideoHeight}p`;
         } else {
-          const maxQuality = selectRes.value === 'auto'
-            ? `${effectiveHeight}p`
-            : `${selectRes.value}p`;
-          statusLabel.innerText = `Playing (up to ${maxQuality})`;
+          statusLabel.innerText = `Playing · up to ${effectiveHeight}p`;
         }
         btnTogglePause.innerText = 'Pause';
         syncHole();
@@ -1680,8 +2560,10 @@
       feedNextPageToken = null;
       feedLoading = false;
       feedItemsCache = [];
-      feedGrid.innerHTML = '';
-      feedGrid.appendChild(createFeedSentinel('Searching...'));
+      feedHeading.innerText = `Results for “${q}”`;
+      feedDescription.innerText = 'Take a look around. There may be something good in here.';
+      renderSkeletons();
+      feedGrid.appendChild(createFeedSentinel('Looking for videos…'));
       statusLabel.innerText = 'Searching...';
       setView('feed');
       loadNextFeedPage();
@@ -1696,8 +2578,10 @@
       feedNextPageToken = null;
       feedLoading = false;
       feedItemsCache = [];
-      feedGrid.innerHTML = '';
-      feedGrid.appendChild(createFeedSentinel('Loading your recommendations...'));
+      feedHeading.innerText = 'Find something you’ll love';
+      feedDescription.innerText = 'A fresh mix of videos, ready when you are.';
+      renderSkeletons();
+      feedGrid.appendChild(createFeedSentinel('Finding a few good videos…'));
       setView('feed');
       statusLabel.innerText = 'Loading recommendations...';
       const requestId = feedRequestId;
@@ -1719,7 +2603,9 @@
         feedNotice = 'Personal recommendations were unavailable. Sign in to YouTube to load your account feed.';
         feedNextPageToken = null;
         feedItemsCache = [];
-        feedGrid.innerHTML = '';
+        feedHeading.innerText = 'A little inspiration for today';
+        feedDescription.innerText = 'Browse what’s popular, or sign in to get recommendations picked for you.';
+        renderSkeletons();
         feedGrid.appendChild(createFeedSentinel('Loading trending videos...'));
         loadNextFeedPage(requestId);
       }
@@ -1729,6 +2615,7 @@
       if (feedLoading || requestId !== feedRequestId) return;
       if (feedNextPageToken === null && feedItemsCache.length > 0) return;
       feedLoading = true;
+      feedGrid.setAttribute('aria-busy', 'true');
       const pageToken = feedNextPageToken;
       updateFeedSentinel('Loading more videos...');
 
@@ -1744,6 +2631,8 @@
         feedNextPageToken = page?.next_page_token || null;
         if (feedItemsCache.length === 0) {
           feedGrid.innerHTML = '';
+          feedGrid.setAttribute('aria-busy', 'false');
+          statusLabel.innerText = 'No videos found';
           if (feedNotice) {
             const notice = document.createElement('div');
             notice.className = 'feed-sentinel';
@@ -1752,7 +2641,19 @@
           }
           const empty = document.createElement('div');
           empty.className = 'empty-state';
-          empty.innerText = `No videos found for "${feedQuery}".`;
+          const title = document.createElement('strong');
+          title.innerText = feedMode === 'search' ? `No videos found for “${feedQuery}”.` : 'Nothing to show just yet.';
+          const message = document.createElement('p');
+          message.innerText = 'Try another search or check your connection, then come back for more.';
+          const searchAgain = document.createElement('button');
+          searchAgain.className = 'btn';
+          searchAgain.type = 'button';
+          searchAgain.innerText = 'Search videos';
+          searchAgain.addEventListener('click', () => {
+            searchInput.focus();
+            searchInput.select();
+          });
+          empty.append(title, message, searchAgain);
           feedGrid.appendChild(empty);
           return;
         }
@@ -1761,20 +2662,25 @@
           ? 'Showing trending videos; sign in for your feed'
           : feedMode === 'recommendations'
             ? 'Recommended for you'
-            : 'Ready';
+            : `${feedItemsCache.length} videos loaded`;
       } catch (err) {
         if (requestId !== feedRequestId) return;
         statusLabel.innerText = 'Could not load more videos';
-        updateFeedSentinel(`Could not load more: ${escapeHtml(err)} — scroll to retry`);
+        feedGrid.querySelectorAll('.skeleton-card').forEach(card => card.remove());
+        updateFeedSentinel('Unable to load videos. Click to try again.');
       } finally {
-        if (requestId === feedRequestId) feedLoading = false;
+        if (requestId === feedRequestId) {
+          feedLoading = false;
+          feedGrid.setAttribute('aria-busy', 'false');
+        }
       }
     }
 
     function createFeedSentinel(text) {
-      const sentinel = document.createElement('div');
+      const sentinel = document.createElement('button');
       sentinel.id = 'feed-sentinel';
       sentinel.className = 'feed-sentinel';
+      sentinel.type = 'button';
       sentinel.innerText = text;
       sentinel.addEventListener('click', () => loadNextFeedPage());
       return sentinel;
@@ -1788,6 +2694,7 @@
     // Render Feed Cards
     function renderFeedGrid(items, append = false) {
       feedObserver.disconnect();
+      feedGrid.setAttribute('aria-busy', 'false');
       if (!append) {
         feedGrid.innerHTML = '';
         if (feedNotice) {
@@ -1802,14 +2709,16 @@
         const id = extractVideoId(item.id);
         if (!id) return;
 
-        const card = document.createElement('div');
+        const card = document.createElement('button');
         card.className = 'feed-card';
+        card.type = 'button';
+        card.setAttribute('aria-label', `Play ${item.title} by ${item.channel_title}`);
         const dur = item.duration_seconds ? formatTime(item.duration_seconds) : '';
         const views = item.view_count ? `${Number(item.view_count).toLocaleString()} views` : '';
 
         card.innerHTML = `
           <div class="feed-thumb-wrap">
-            <img class="feed-thumb" src="${escapeHtml(item.thumbnail_url || '')}" loading="lazy" onerror="this.style.opacity='0.2'" />
+            <img class="feed-thumb" src="${escapeHtml(item.thumbnail_url || '')}" alt="" loading="lazy" onerror="this.style.opacity='0.2'" />
             ${dur ? `<span class="feed-duration">${dur}</span>` : ''}
           </div>
           <div class="feed-info">
@@ -1844,13 +2753,15 @@
         const id = extractVideoId(item.id);
         if (!id) return;
 
-        const card = document.createElement('div');
+        const card = document.createElement('button');
         card.className = 'side-card';
+        card.type = 'button';
+        card.setAttribute('aria-label', `Play ${item.title} by ${item.channel_title}`);
         const dur = item.duration_seconds ? formatTime(item.duration_seconds) : '';
 
         card.innerHTML = `
           <div class="side-thumb-wrap">
-            <img class="side-thumb" src="${escapeHtml(item.thumbnail_url || '')}" loading="lazy" onerror="this.style.opacity='0.2'" />
+            <img class="side-thumb" src="${escapeHtml(item.thumbnail_url || '')}" alt="" loading="lazy" onerror="this.style.opacity='0.2'" />
             ${dur ? `<span class="side-duration">${dur}</span>` : ''}
           </div>
           <div class="side-info">
@@ -2012,11 +2923,6 @@
       btnTogglePaste.innerText = isHidden ? 'Hide manual paste area' : 'Or paste cookies text manually';
     });
 
-    // Drop zone click triggers file picker
-    cookieDropZone.addEventListener('click', () => {
-      inputCookieFile.click();
-    });
-
     // Drag-and-drop listeners
     cookieDropZone.addEventListener('dragover', (e) => {
       e.preventDefault();
@@ -2112,8 +3018,9 @@
 
     settingDefaultRes.addEventListener('change', () => {
       selectRes.value = settingDefaultRes.value;
-      effectiveHeight = selectRes.value === 'auto' ? 480 : parseInt(selectRes.value, 10);
+      effectiveHeight = selectedResolutionCap();
       bufferingSince = null;
+      autoDowngradePending = false;
       invoke('store_set_setting', {
         key: 'default_res',
         value: settingDefaultRes.value,
@@ -2129,7 +3036,7 @@
         const effectiveRes = defaultResVal || 'auto';
         settingDefaultRes.value = effectiveRes;
         selectRes.value = effectiveRes;
-        effectiveHeight = effectiveRes === 'auto' ? 480 : parseInt(effectiveRes, 10);
+        effectiveHeight = selectedResolutionCap();
 
         const savedVolume = await invoke('store_get_setting', { key: 'volume' });
         const currentVolume = savedVolume === null
@@ -2187,7 +3094,11 @@
     btnTogglePause.addEventListener('click', async () => {
       const paused = await invoke('player_toggle_pause');
       btnTogglePause.innerText = paused ? 'Play' : 'Pause';
-      statusLabel.innerText = paused ? 'Paused' : `Playing (${selectRes.value}p)`;
+      statusLabel.innerText = paused
+        ? 'Paused'
+        : currentVideoHeight
+          ? `Playing at ${currentVideoHeight}p`
+          : `Playing · up to ${effectiveHeight}p`;
     });
 
     btnStop.addEventListener('click', async () => {
@@ -2214,8 +3125,9 @@
     });
 
     selectRes.addEventListener('change', () => {
-      effectiveHeight = selectRes.value === 'auto' ? 480 : parseInt(selectRes.value, 10);
+      effectiveHeight = selectedResolutionCap();
       bufferingSince = null;
+      autoDowngradePending = false;
       invoke('store_set_setting', {
         key: 'default_res',
         value: selectRes.value,
@@ -2282,7 +3194,7 @@
     });
 
     // Docked Miniplayer Events
-    miniplayerBar.addEventListener('click', () => {
+    miniReturn.addEventListener('click', () => {
       setView('watch');
     });
 
@@ -2366,48 +3278,58 @@
             timeDuration.innerText = formatTime(state.duration);
             seekSlider.max = Math.floor(state.duration);
             seekSlider.value = Math.floor(state.position);
+          }
 
-            const resLabel = selectRes.value === 'auto' ? `Auto (${effectiveHeight}p)` : `${selectRes.value}p`;
+          if (state.buffering) {
+            const activeQuality = currentVideoHeight ? `${currentVideoHeight}p` : `${effectiveHeight}p`;
+            statusLabel.innerText = `Buffering at ${activeQuality}…`;
+            showVideoLoader(`Getting the stream ready at ${activeQuality}…`);
 
-            if (state.buffering) {
-              statusLabel.innerText = 'Buffering...';
-              showVideoLoader(`Buffering stream (${resLabel})...`);
+            const now = Date.now();
+            if (bufferingSince === null) {
+              bufferingSince = now;
+            }
 
-              const now = Date.now();
-              if (bufferingSince === null) {
-                bufferingSince = now;
-              }
-
-              if (
-                selectRes.value === 'auto'
-                && now - bufferingSince >= AUTO_DOWNGRADE_AFTER_MS
-                && !autoDowngradePending
-                && effectiveHeight > 360
-              ) {
+            const nextHeight = nextLowerResolution(effectiveHeight);
+            if (
+              now - bufferingSince >= AUTO_DOWNGRADE_AFTER_MS
+              && !autoDowngradePending
+            ) {
+              if (nextHeight) {
                 autoDowngradePending = true;
-                effectiveHeight = 360;
-                statusLabel.innerText = 'Buffering: trying 360p...';
-                showVideoLoader('Buffering: switching to 360p...');
-                if (currentVideoId) {
-                  playVideo(currentVideoId, currentVideoTitle, currentChannelTitle, currentThumbnailUrl, -1.0)
-                    .finally(() => {
-                      setTimeout(() => { autoDowngradePending = false; }, 6000);
-                    });
-                }
+                effectiveHeight = nextHeight;
+                bufferingSince = null;
+                statusLabel.innerText = `Trying ${nextHeight}p for smoother playback`;
+                showVideoLoader(`Switching to ${nextHeight}p for a steadier stream…`);
+                playVideo(currentVideoId, currentVideoTitle, currentChannelTitle, currentThumbnailUrl, -1.0)
+                  .finally(() => {
+                    setTimeout(() => { autoDowngradePending = false; }, 6000);
+                  });
+              } else {
+                statusLabel.innerText = 'Still buffering at 360p · check your connection';
+                showVideoLoader('Still buffering at 360p. Check your connection and try again.');
               }
-            } else {
-              bufferingSince = null;
-              hideVideoLoader();
-              statusLabel.innerText = state.paused ? 'Paused' : `Playing (${resLabel})`;
             }
+          } else {
+            bufferingSince = null;
+            hideVideoLoader();
+            const preferredHeight = selectedResolutionCap();
+            const activeQuality = currentVideoHeight
+              ? `${currentVideoHeight}p`
+              : `up to ${effectiveHeight}p`;
+            statusLabel.innerText = state.paused
+              ? 'Paused'
+              : effectiveHeight < preferredHeight
+                ? `Playing at ${activeQuality} · adjusted for a steadier stream`
+                : `Playing at ${activeQuality}`;
+          }
 
-            if (currentVideoId && Math.abs(state.position - lastRecordedPos) > 5) {
-              lastRecordedPos = state.position;
-              invoke('store_update_resume_pos', {
-                videoId: currentVideoId,
-                resumePos: state.position,
-              });
-            }
+          if (state.duration > 0 && currentVideoId && Math.abs(state.position - lastRecordedPos) > 5) {
+            lastRecordedPos = state.position;
+            invoke('store_update_resume_pos', {
+              videoId: currentVideoId,
+              resumePos: state.position,
+            });
           }
         }
       } catch (e) {}

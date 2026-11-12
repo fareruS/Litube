@@ -338,7 +338,9 @@ fn page_bounds(token: Option<&str>) -> Result<(u32, u32), SourceError> {
 }
 
 fn video_format_filter(max_height: u32) -> String {
-    format!("bestvideo[height<={max_height}]+bestaudio/best[height<={max_height}]")
+    format!(
+        "bestvideo[height={max_height}][vcodec^=avc1]+bestaudio/best[height={max_height}][vcodec^=avc1]/bestvideo[height<={max_height}][fps<=30]+bestaudio/best[height<={max_height}][fps<=30]/bestvideo[height<={max_height}][vcodec^=avc1]+bestaudio/best[height<={max_height}][vcodec^=avc1]/bestvideo[height<={max_height}]+bestaudio/best[height<={max_height}]"
+    )
 }
 
 fn parse_playable_media(
@@ -469,10 +471,10 @@ mod tests {
     }
 
     #[test]
-    fn quality_filter_uses_best_available_codec_below_selected_ceiling() {
+    fn quality_filter_prefers_requested_resolution_and_caps_frame_rate() {
         assert_eq!(
             video_format_filter(1080),
-            "bestvideo[height<=1080]+bestaudio/best[height<=1080]"
+            "bestvideo[height=1080][vcodec^=avc1]+bestaudio/best[height=1080][vcodec^=avc1]/bestvideo[height<=1080][fps<=30]+bestaudio/best[height<=1080][fps<=30]/bestvideo[height<=1080][vcodec^=avc1]+bestaudio/best[height<=1080][vcodec^=avc1]/bestvideo[height<=1080]+bestaudio/best[height<=1080]"
         );
     }
 
