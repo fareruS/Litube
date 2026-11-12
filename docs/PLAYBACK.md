@@ -9,7 +9,7 @@
 - **WebView2 Subsystem Trimming:** `--renderer-process-limit=1`, `--js-flags=--max-old-space-size=64`, `--process-per-site`, disabling unused browser features.
 - **Network Resilience:** Reconnects streamed responses and retries server-side HTTP errors (`5xx`) up to six times, with a two-second delay cap and 30-second total retry cap. Client errors such as expired-URL `403`s are not retried; stream URLs are re-extracted when a cached URL is expired or within five minutes of expiry. Network timeout is 10 seconds.
 - **Format Selection:** Prefers H.264 at the requested resolution, then H.264 at or below it, then other formats at 30 fps or lower, and finally any format at or below the requested height. Adaptive quality starts at up to 1080p and steps down one tier after eight seconds of continuous cache buffering; the UI reports the selected video height and each change. Network bandwidth still determines whether 1080p can play without a quality drop.
-- **Extractor Bounds:** yt-dlp invocations time out after 20 seconds and stdout is capped at 8 MiB.
+- **Extractor Bounds:** yt-dlp invocations time out after 60 seconds and stdout is capped at 8 MiB.
 - **Internal ytdl Disabled:** `ytdl=no` (Stream resolution handled strictly out-of-process via Rust `yt-dlp` sidecar)
 
 ## 2. DASH Audio & Video Synchronization

@@ -19,7 +19,7 @@ pub struct YtDlpSource {
 
 /// Hard timeout for a single yt-dlp invocation: without it a hung
 /// extractor leaves the UI stuck on "Extracting..." forever.
-const EXTRACTOR_TIMEOUT_SECS: u64 = 20;
+const EXTRACTOR_TIMEOUT_SECS: u64 = 60;
 /// Reject absurdly large `--dump-single-json` output instead of letting it
 /// fill RAM (a single video's JSON is far below this).
 const MAX_EXTRACTOR_OUTPUT_BYTES: usize = 8 * 1024 * 1024;

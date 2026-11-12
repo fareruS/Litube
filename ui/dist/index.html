@@ -2532,8 +2532,14 @@
         renderSideRelated(feedItemsCache.filter(it => extractVideoId(it.id) !== id));
       } catch (err) {
         isExtracting = false;
-        showVideoLoader('Stream extraction failed');
-        statusLabel.innerText = 'Extraction failed';
+        const detail = String(err && err.message ? err.message : err || '')
+          .replace(/https?:\/\/\S+/gi, 'stream URL')
+          .replace(/\s+/g, ' ')
+          .slice(0, 180);
+        showVideoLoader(detail
+          ? `Unable to load this video. ${detail}`
+          : 'Unable to load this video. Check your connection and try again.');
+        statusLabel.innerText = 'Playback failed';
         console.error('Play error:', err);
       }
     }
